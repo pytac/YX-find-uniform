@@ -164,25 +164,25 @@ def make_uniform():
     '''
 
     # 初始化数据集
-    data = flask.request.json
+    payload_data = flask.request.json
     result = {"YID": None, "Warning": []}
 
     # 错误 - 缺少学校ID
-    if ("school_id" not in data):
+    if ("school_id" not in payload_data):
         return flask.jsonify({
             "Error": "school_id is required"
         }), 400
     # 错误 - 学校ID不存在
-    if (data["school_id"] not in storage["school_register_search"]):
+    if (payload_data["school_id"] not in storage["school_register_search"]):
         return flask.jsonify({
             "Error": "school_id not found",
         }), 400
 
     # 获取时间戳
     timestamp = None
-    if ("timestamp" in data):
+    if ("timestamp" in payload_data):
         if (agree_debug):
-            timestamp = data["timestamp"]
+            timestamp = payload_data["timestamp"]
         else:
             timestamp = int(time())
             result["Warning"].append("timestamp is not provided")
@@ -192,17 +192,17 @@ def make_uniform():
     # 获取批次
     global batch
     loc_batch = batch
-    if ("batch" in data):
+    if ("batch" in payload_data):
         if (agree_debug):
-            loc_batch = data["batch"]
+            loc_batch = payload_data["batch"]
         else:
             result["Warning"].append("batch is not provided")
     
     # 生成服装ID
-    YID = generate_uniform_id(data["school_id"], timestamp, loc_batch)
-    if ("yid" in data):
+    YID = generate_uniform_id(payload_data["school_id"], timestamp, loc_batch)
+    if ("yid" in payload_data):
         if (agree_debug):
-            YID = data["yid"]
+            YID = payload_data["yid"]
         else:
             result["Warning"].append("yid is not provided")
     
@@ -227,13 +227,15 @@ def make_uniform():
     return flask.jsonify(result), 200
 
 
-# @app.route("/school/register")
+@app.route("/school/register", methods=['POST'])
 def school_resgister():
     '''
     payload:
-    "name": 学校名称,
-    "sid": 学校id  (不可重复),
-    "password": 密码,
+    {
+        "name": 学校名称,
+        "sid": 学校id  (不可重复),
+        "password": 密码,
+    }
     '''
     payload_data = flask.request.json
 
@@ -247,7 +249,7 @@ def school_resgister():
     exist_list1 = ["name",              "sid"]
     exist_list2 = ["exist_school_name", "school_register_search"]
     for i in range(len(exist_list1)):
-        if (payload_data[exist_list1(i)] in storage[exist_list2(i)]):
+        if (payload_data[exist_list1[i]] in storage[exist_list2[i]]):
             return flask.jsonify({"Error":f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist"}), 400
         
     # 弱密码判断  撇了
@@ -266,6 +268,14 @@ def school_resgister():
     }
 
     storage["exist_school_name"].append(payload_data["name"])
+
+    # 返回结果
+    if (storage["school_register_search"][payload_data["sid"]]["name"] != payload_data["name"]):
+        return flask.jsonify({"Error":"school_register_search in error (register failed)"}), 500
+    if (not payload_data["name"] in storage["exist_school_name"]):
+        return flask.jsonify({"Error":"exist_school_name in error (register failed)"}), 500
+
+    return flask.jsonify({"Success":"register successfully","Status":True}), 200
 
 is_saved=False
 if __name__ == '__main__':
