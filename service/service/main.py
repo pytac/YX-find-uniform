@@ -2,7 +2,8 @@
 import flask               # 服务器搭建
 import json,os             # 保存数据
 from time import time      # 获取时间戳
-import hashlib             # 生成哈希值
+# import hashlib             # 生成哈希值
+import uuid
 import sys                 # 获取命令行参数
 
 # 初始化 --------------------------------
@@ -10,12 +11,27 @@ import sys                 # 获取命令行参数
 storage_file = os.path.join(os.path.dirname(__file__), 'storage.json')
 
 agree_debug = False
+use_uuid4 = True           # 只用 uuid5,4
 
-def start_init_agree_debug():
-    global agree_debug
+# def start_init_agree_debug():
+#     global agree_debug
+#     argv = sys.argv[1:]
+#     if len(argv) > 0 and '--agree-debug' in argv:
+#         agree_debug = True
+
+def start_init_prompt():
+    global agree_debug, use_uuid4
+
     argv = sys.argv[1:]
-    if len(argv) > 0 and '--agree-debug' in argv:
+    if len(argv) == 0:
+        return
+
+    if  '--agree-debug' in argv:
         agree_debug = True
+    
+    if '--use-uuid5' in argv:
+        use_uuid4 = False
+
 
 storage = None
 
@@ -132,6 +148,17 @@ def generate_uniform_id(school_id, timestamp, batch):
         batch = str(batch)
         print(batch)
     
+    if (use_uuid4):
+        # print(uuid.uuid4())
+        return uuid.uuid4()
+    else:
+        # print(uuid.uuid5(uuid.NAMESPACE_DNS,"abc"))
+        return uuid.uuid5(uuid.NAMESPACE_DNS,"abc")
+
+    return
+
+    # ---
+
     # 直接拼接：学校ID(10位) + 时间戳(10位) + 批次(4位)
     raw_data = f"{school_id}{timestamp}{batch.zfill(4)}"
     print(raw_data)
@@ -200,6 +227,7 @@ def make_uniform():
     
     # 生成服装ID
     YID = generate_uniform_id(payload_data["school_id"], timestamp, loc_batch)
+    YID = str(YID)
     if ("yid" in payload_data):
         if (agree_debug):
             YID = payload_data["yid"]
@@ -277,9 +305,22 @@ def school_resgister():
 
     return flask.jsonify({"Success":"register successfully","Status":True}), 200
 
+# @app.route("/user/enable", methods=['POST'])
+def enable_uniform():
+    '''
+    payload:
+    {
+        "yid": 衣服id,
+        "uid": 用户id
+    }
+    '''
+
+
+
 is_saved=False
 if __name__ == '__main__':
-    start_init_agree_debug()
+    # start_init_agree_debug()
+    start_init_prompt()
     start_init_storage()
 
     app.run(debug=False)
