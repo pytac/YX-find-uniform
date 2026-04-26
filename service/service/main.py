@@ -26,6 +26,10 @@ def start_init_prompt():
     if len(argv) == 0:
         return
 
+    if  '--tect' in argv or '-t' in argv:
+        print("tect mode")
+        agree_debug = use_uuid4 = True
+
     if  '--agree-debug' in argv:
         agree_debug = True
     
@@ -36,92 +40,29 @@ def start_init_prompt():
 storage = None
 
 def start_init_storage():
-    '''
-    SID: 学校ID
-    YID: 衣服ID
-    UID: 用户ID
-
-    storage:
-    {
-        "school_register": [               --> list [ dict ]
-            注册学校信息
-            {
-                "name": "名字",
-                "password": "密码",
-                "sid": "SID"
-            },...
-        ],
-        "school_register_search": {       --> dict [ dict ]
-            "SID": {
-                "name": "名字",
-                "password": "密码"
-            },...
-        },
-        "exist_school_name":[             --> list [ str ]
-            "name", (学校名字)
-        ]
-
-        # "uniform": [
-        #     服装信息
-        #     {
-        #         "yid": "YID",
-        #         "is_active": True,
-        #         "detail":{
-        #             "uid": "用户ID",
-        #         }
-        #     },...
-        # ],
-        "uniform_search": {               --> dict [ dict ]
-            "YID": {
-                "is_active": True,
-                "detail":{
-                    "uid": "用户ID",
-                }
-            },...
-        }
-    }
-    '''
     
     global storage
     if not os.path.exists(storage_file):
         storage = {
             # 学校注册 sid,yid,uid 键值统一小写
             "school_register": [
-                {
-                    "name": "Example School",
-                    "password": "ExamplePassword",
-                    "sid": "Example"
-                }
+            ],
+            "exist_school_name":[
             ],
             "school_register_search": {
-                "Example": {
-                    "name": "Example School",
-                    "password": "ExamplePassword"
-                }
             },
-            "exist_school_name":[
-                "Example School",
-            ],
 
-
-            # "uniform": [
-            #     {
-            #         "yid": "ExampleY",             # 衣服ID: generate_uniform_id(学校ID, 时间戳, 批次)
-            #         "is_active": True,
-            #         "detail":{
-            #             "uid": "ExampleUser",
-            #         }
-            #     }
-            # ],
             "uniform_search": {
-                "ExampleY": {
-                    "is_active": True,
-                    "detail":{
-                        "uid": "ExampleUser",
-                    }
-                }
+            },
+
+            "user_uniform":{
             }
         }
+
+        if agree_debug:
+            with open(os.path.join(os.path.dirname(__file__), 'tect\\init_storage.json'), 'r') as f:
+                storage = json.load(f)
+
         with open(storage_file, 'w') as f:
             json.dump(storage, f, indent=4)
             # json.dump(storage, f)
@@ -305,7 +246,7 @@ def school_resgister():
 
     return flask.jsonify({"Success":"register successfully","Status":True}), 200
 
-# @app.route("/user/enable", methods=['POST'])
+@app.route("/user/enable", methods=['POST'])
 def enable_uniform():
     '''
     payload:
@@ -314,6 +255,32 @@ def enable_uniform():
         "uid": 用户id
     }
     '''
+    payload_data = flask.request.json
+
+    # 判断参数是否存在
+    in_need_list = ["yid","uid"]
+    for i in in_need_list:
+        if (not i in payload_data):
+            return flask.jsonify({"Error":f"{i} is required"}), 400
+    
+    # 判断服装是否存在
+    if (payload_data["yid"] not in storage["uniform_search"]):
+        return flask.jsonify({"Error":"yid not found"}), 404
+    # 判断是否已被激活
+    if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
+        return flask.jsonify({"Error":"yid is already active"}), 423
+    
+    # 修改
+    storage["uniform_search"][payload_data["yid"]] = {
+        "is_active": True,
+        "detail": {
+            "uid": payload_data["uid"]
+        }
+    }
+
+    storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
+
+    return flask.jsonify({"Success":"enable successfully","Status":True}), 200
 
 
 
