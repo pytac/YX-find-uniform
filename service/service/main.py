@@ -11,7 +11,7 @@ import sys                 # 获取命令行参数
 storage_file = os.path.join(os.path.dirname(__file__), 'storage.json')
 
 agree_debug = False
-use_uuid4 = True           # 只用 uuid5,4
+# use_uuid4 = True           # 只用 uuid5,4
 
 # def start_init_agree_debug():
 #     global agree_debug
@@ -33,8 +33,8 @@ def start_init_prompt():
     if  '--agree-debug' in argv:
         agree_debug = True
     
-    if '--use-uuid5' in argv:
-        use_uuid4 = False
+    # if '--use-uuid5' in argv:
+    #     use_uuid4 = False
 
 
 storage = None
@@ -45,8 +45,6 @@ def start_init_storage():
     if not os.path.exists(storage_file):
         storage = {
             # 学校注册 sid,yid,uid 键值统一小写
-            "school_register": [
-            ],
             "exist_school_name":[
             ],
             "school_register_search": {
@@ -70,8 +68,6 @@ def start_init_storage():
         with open(storage_file, 'r') as f:
             storage = json.load(f)
 
-batch =  1 # 批次，四位数
-
 
 # 结束 --------------------------------
 def end_storage():
@@ -83,37 +79,9 @@ def end_storage():
 # 必要函数 --------------------------------
 
 # 生成服装ID
-def generate_uniform_id(school_id, timestamp, batch):
-    print(school_id, timestamp, batch)
-    if (type(batch) != str):
-        batch = str(batch)
-        print(batch)
-    
-    if (use_uuid4):
-        # print(uuid.uuid4())
-        return uuid.uuid4()
-    else:
-        # print(uuid.uuid5(uuid.NAMESPACE_DNS,"abc"))
-        return uuid.uuid5(uuid.NAMESPACE_DNS,"abc")
-
-    return
-
-    # ---
-
-    # 直接拼接：学校ID(10位) + 时间戳(10位) + 批次(4位)
-    raw_data = f"{school_id}{timestamp}{batch.zfill(4)}"
-    print(raw_data)
-    
-    # 如果原始数据不超过300位，直接返回
-    if len(raw_data) <= 300:
-        return raw_data
-    
-    # 超出则用SHA-256截取
-    hash_result = hashlib.sha256(raw_data.encode()).hexdigest()
-    print(hash_result)
-    return school_id + hash_result[:min(286, len(hash_result))]  # 保留学校ID前缀
-
-
+# 直接使用 uuid4 生成
+def generate_uniform_id(school_id):
+    return uuid.uuid4()
 
 
 # web服务器 --------------------------------------------
@@ -124,11 +92,11 @@ def make_uniform():
     '''
     payload:
     {
-        "school_id": "学校ID",
-        ("timestamp": "时间戳",  当 agree_debug 时)
-        ("batch": "批次",  当 agree_debug 时)
+        "sid": "学校ID",
         ("yid": "服装ID",  当 agree_debug 时)
     }
+
+    最后一次测试: 2026-05-05 16:15
     '''
 
     # 初始化数据集
@@ -136,38 +104,19 @@ def make_uniform():
     result = {"YID": None, "Warning": []}
 
     # 错误 - 缺少学校ID
-    if ("school_id" not in payload_data):
+    if ("sid" not in payload_data):
         return flask.jsonify({
-            "Error": "school_id is required"
+            "Error": "sid is required"
         }), 400
     # 错误 - 学校ID不存在
-    if (payload_data["school_id"] not in storage["school_register_search"]):
+    if (payload_data["sid"] not in storage["school_register_search"]):
         return flask.jsonify({
-            "Error": "school_id not found",
-        }), 400
-
-    # 获取时间戳
-    timestamp = None
-    if ("timestamp" in payload_data):
-        if (agree_debug):
-            timestamp = payload_data["timestamp"]
-        else:
-            timestamp = int(time())
-            result["Warning"].append("timestamp is not provided")
-    else:
-        timestamp = int(time())
-    
-    # 获取批次
-    global batch
-    loc_batch = batch
-    if ("batch" in payload_data):
-        if (agree_debug):
-            loc_batch = payload_data["batch"]
-        else:
-            result["Warning"].append("batch is not provided")
+            "Error": "sid not found",
+        }), 404
     
     # 生成服装ID
-    YID = generate_uniform_id(payload_data["school_id"], timestamp, loc_batch)
+    YID = generate_uniform_id(payload_data["sid"])
+
     YID = str(YID)
     if ("yid" in payload_data):
         if (agree_debug):
@@ -182,13 +131,10 @@ def make_uniform():
         result.pop("Warning")
     
     # 本地更新
-    # 如果批次与当前批次相同，增加批次
-    if (loc_batch == batch):
-        batch = int((batch+1)%1000)
-    print(batch)
     # 更新服装信息
     storage["uniform_search"][YID] = {
         "is_active": False,
+        "sid": payload_data["sid"],
         "detail": None
     }
 
@@ -204,19 +150,22 @@ def school_resgister():
         "name": 学校名称,
         "sid": 学校id  (不可重复),
         "password": 密码,
+        "school_service": "学校服务地址",
     }
+
+    最后一次测试: 2026-05-05 16:05
     '''
     payload_data = flask.request.json
 
     # 判断参数是否存在
-    in_need_list = ["name","sid","password"]
+    in_need_list = ["name","sid","password","school_service"]
     for i in in_need_list:
         if (not i in payload_data):
             return flask.jsonify({"Error":f"{i} is required"}), 400
     
     # 判断重复
     exist_list1 = ["name",              "sid"]
-    exist_list2 = ["exist_school_name", "school_register_search"]
+    exist_list2 = ["exist_school_name" ,"school_register_search"]
     for i in range(len(exist_list1)):
         if (payload_data[exist_list1[i]] in storage[exist_list2[i]]):
             return flask.jsonify({"Error":f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist"}), 400
@@ -224,16 +173,12 @@ def school_resgister():
     # 弱密码判断  撇了
 
     # 注册
-    # 需要修改 school_register, school_register_search, exist_school_name
-    storage["school_register"].append( {
-        "name":payload_data["name"],
-        "sid": payload_data["sid"],
-        "password": payload_data["password"]
-    } )
+    # 需要修改 school_register_search, exist_school_name
 
     storage["school_register_search"][payload_data["sid"]] =  {
         "name": payload_data["name"],
-        "password": payload_data["password"]
+        "password": payload_data["password"],
+        "school_service": payload_data["school_service"],
     }
 
     storage["exist_school_name"].append(payload_data["name"])
@@ -246,19 +191,20 @@ def school_resgister():
 
     return flask.jsonify({"Success":"register successfully","Status":True}), 200
 
-@app.route("/user/enable", methods=['POST'])
+# @app.route("/user/enable", methods=['POST'])
 def enable_uniform():
     '''
     payload:
     {
         "yid": 衣服id,
-        "uid": 用户id
+        "uid": 用户id,
+        "student": 学号
     }
     '''
     payload_data = flask.request.json
 
     # 判断参数是否存在
-    in_need_list = ["yid","uid"]
+    in_need_list = ["yid","uid","student"]
     for i in in_need_list:
         if (not i in payload_data):
             return flask.jsonify({"Error":f"{i} is required"}), 400
@@ -274,11 +220,15 @@ def enable_uniform():
     storage["uniform_search"][payload_data["yid"]] = {
         "is_active": True,
         "detail": {
-            "uid": payload_data["uid"]
+            "uid": payload_data["uid"],
+            "student": payload_data["student"]
         }
     }
 
     storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
+
+    # 发送激活消息给学校
+    # send_msg()
 
     return flask.jsonify({"Success":"enable successfully","Status":True}), 200
 
@@ -290,7 +240,7 @@ if __name__ == '__main__':
     start_init_prompt()
     start_init_storage()
 
-    app.run(debug=False)
+    app.run(debug=False, host="127.0.0.1", port=5000)
 
     end_storage()
     sys.exit(0)

@@ -26,29 +26,31 @@
 
 ## service \ storage 格式
 
-```plaintext
+```python
+'''
 SID: 学校ID
 YID: 衣服ID
 UID: 用户ID
-
-storage:
-{
-    "school_register": [
-        注册学校信息
-        {
-            "name": "名字",
-            "password": "密码",
-            "sid": "SID"
-        },...
-    ],
+'''
+storage = {
+    # "school_register": [
+    #     # 注册学校信息
+    #     {
+    #         "name": "名字",
+    #         "password": "密码",
+    #         "sid": "SID",
+    #         "school_service": "学校服务地址"
+    #     }, #...
+    # ],
     "school_register_search": {
         "SID": {
             "name": "名字",
-            "password": "密码"
-        },...
+            "password": "密码",
+            "school_service": "学校服务地址"
+        }, # ...
     },
     "exist_school_name":[
-        "name", (学校名字)
+        "name", #(学校名字)
     ]
 
     # "uniform": [
@@ -65,16 +67,18 @@ storage:
     "uniform_search": {
         "YID": {
             "is_active": True,
+            "sid": "SID",
             "detail":{
                 "uid": "UID",
-            } / None
-        },...
+                "student": "学号"
+            } # / None
+        },# ...
     },
 
     "user_uniform":{
         "UID": [
-            "YID",...
-        ],...
+            "YID", # ...
+        ], # ...
     }
 }
 ```
