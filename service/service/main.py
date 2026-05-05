@@ -5,6 +5,7 @@ from time import time      # 获取时间戳
 # import hashlib             # 生成哈希值
 import uuid
 import sys                 # 获取命令行参数
+import requests            # 发送请求
 
 # 初始化 --------------------------------
 
@@ -80,9 +81,17 @@ def end_storage():
 
 # 生成服装ID
 # 直接使用 uuid4 生成
-def generate_uniform_id(school_id):
+def generate_uniform_id():
     return uuid.uuid4()
 
+def send_msg_to_school(sid,path,msg):
+    url = storage["school_register_search"][sid]["school_service"]+path
+    
+    # 处理URL - 假如有 // 则合并
+    url = url.split("//")
+    url = (url[0] + "//" + "/".join(url[1:])) if url[0].startswith("http") else "http://" + '/'.join(url[:])
+    
+    return requests.post(url,json.dumps(msg))
 
 # web服务器 --------------------------------------------
 app = flask.Flask(__name__)
@@ -115,7 +124,7 @@ def make_uniform():
         }), 404
     
     # 生成服装ID
-    YID = generate_uniform_id(payload_data["sid"])
+    YID = generate_uniform_id()
 
     YID = str(YID)
     if ("yid" in payload_data):
@@ -191,7 +200,7 @@ def school_resgister():
 
     return flask.jsonify({"Success":"register successfully","Status":True}), 200
 
-# @app.route("/user/enable", methods=['POST'])
+@app.route("/user/enable", methods=['POST'])
 def enable_uniform():
     '''
     payload:
@@ -200,6 +209,7 @@ def enable_uniform():
         "uid": 用户id,
         "student": 学号
     }
+    最后一次测试: 2026-05-05 17:25
     '''
     payload_data = flask.request.json
 
@@ -216,9 +226,23 @@ def enable_uniform():
     if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
         return flask.jsonify({"Error":"yid is already active"}), 423
     
+    
+    # 发送激活消息给学校
+    print(storage["uniform_search"][payload_data["yid"]])
+    sid = storage["uniform_search"][payload_data["yid"]]["sid"]
+    response = send_msg_to_school(sid, "/service/enable",{
+        "yid": payload_data["yid"],
+        "uid": payload_data["uid"],
+        "student": payload_data["student"]
+    })
+    print(response.json())
+    if (response.status_code != 200):
+        return flask.jsonify({"Error":"school enable failed","Detail":response.json()}),  response.status_code
+
     # 修改
     storage["uniform_search"][payload_data["yid"]] = {
         "is_active": True,
+        "sid": sid,
         "detail": {
             "uid": payload_data["uid"],
             "student": payload_data["student"]
@@ -226,10 +250,8 @@ def enable_uniform():
     }
 
     storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
-
-    # 发送激活消息给学校
-    # send_msg()
-
+    
+    # 返回结果
     return flask.jsonify({"Success":"enable successfully","Status":True}), 200
 
 
