@@ -1,4 +1,3 @@
-
 import flask               # 服务器搭建
 import json,os             # 保存数据
 from time import time      # 获取时间戳
@@ -91,7 +90,17 @@ def send_msg_to_school(sid,path,msg):
     url = url.split("//")
     url = (url[0] + "//" + "/".join(url[1:])) if url[0].startswith("http") else "http://" + '/'.join(url[:])
     
-    return requests.post(url,json.dumps(msg))
+    return requests.post(url,json=msg)
+
+# 辅助函数：统一响应格式
+def _make_response(phrase, status, detail=None):
+    if detail is None:
+        detail = {}
+    return flask.jsonify({
+        "Phrase": phrase,
+        "Status": status,
+        "Detail": detail
+    })
 
 # web服务器 --------------------------------------------
 app = flask.Flask(__name__)
@@ -105,7 +114,7 @@ def make_uniform():
         ("yid": "服装ID",  当 agree_debug 时)
     }
 
-    最后一次测试: 2026-05-05 16:15
+    最后一次测试: 2026-05-17 17:20
     '''
 
     # 初始化数据集
@@ -114,14 +123,10 @@ def make_uniform():
 
     # 错误 - 缺少学校ID
     if ("sid" not in payload_data):
-        return flask.jsonify({
-            "Error": "sid is required"
-        }), 400
+        return _make_response("sid is required", False, {}), 400
     # 错误 - 学校ID不存在
     if (payload_data["sid"] not in storage["school_register_search"]):
-        return flask.jsonify({
-            "Error": "sid not found",
-        }), 404
+        return _make_response("sid not found", False, {}), 404
     
     # 生成服装ID
     YID = generate_uniform_id()
@@ -148,7 +153,7 @@ def make_uniform():
     }
 
     # 返回结果
-    return flask.jsonify(result), 200
+    return _make_response("Make uniform success", True, result), 200
 
 
 @app.route("/school/register", methods=['POST'])
@@ -170,14 +175,14 @@ def school_resgister():
     in_need_list = ["name","sid","password","school_service"]
     for i in in_need_list:
         if (not i in payload_data):
-            return flask.jsonify({"Error":f"{i} is required"}), 400
+            return _make_response(f"{i} is required", False, {}), 400
     
     # 判断重复
     exist_list1 = ["name",              "sid"]
     exist_list2 = ["exist_school_name" ,"school_register_search"]
     for i in range(len(exist_list1)):
         if (payload_data[exist_list1[i]] in storage[exist_list2[i]]):
-            return flask.jsonify({"Error":f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist"}), 400
+            return _make_response(f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist", False, {}), 400
         
     # 弱密码判断  撇了
 
@@ -194,11 +199,11 @@ def school_resgister():
 
     # 返回结果
     if (storage["school_register_search"][payload_data["sid"]]["name"] != payload_data["name"]):
-        return flask.jsonify({"Error":"school_register_search in error (register failed)"}), 500
+        return _make_response("school_register_search in error (register failed)", False, {}), 500
     if (not payload_data["name"] in storage["exist_school_name"]):
-        return flask.jsonify({"Error":"exist_school_name in error (register failed)"}), 500
+        return _make_response("exist_school_name in error (register failed)", False, {}), 500
 
-    return flask.jsonify({"Success":"register successfully","Status":True}), 200
+    return _make_response("register successfully", True, {}), 200
 
 @app.route("/user/enable", methods=['POST'])
 def enable_uniform():
@@ -209,7 +214,7 @@ def enable_uniform():
         "uid": 用户id,
         "student": 学号
     }
-    最后一次测试: 2026-05-05 17:25
+    最后一次测试: 2026-05-17 17:47
     '''
     payload_data = flask.request.json
 
@@ -217,14 +222,14 @@ def enable_uniform():
     in_need_list = ["yid","uid","student"]
     for i in in_need_list:
         if (not i in payload_data):
-            return flask.jsonify({"Error":f"{i} is required"}), 400
+            return _make_response(f"{i} is required", False, {}), 400
     
     # 判断服装是否存在
     if (payload_data["yid"] not in storage["uniform_search"]):
-        return flask.jsonify({"Error":"yid not found"}), 404
+        return _make_response("yid not found", False, {}), 404
     # 判断是否已被激活
     if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
-        return flask.jsonify({"Error":"yid is already active"}), 423
+        return _make_response("yid is already active", False, {}), 423
     
     
     # 发送激活消息给学校
@@ -237,7 +242,9 @@ def enable_uniform():
     })
     print(response.json())
     if (response.status_code != 200):
-        return flask.jsonify({"Error":"school enable failed","Detail":response.json()}),  response.status_code
+        # 将学校返回的错误信息放入 Detail
+        error_detail = response.json() if response.json() else {}
+        return _make_response("school enable failed", False, error_detail), response.status_code
 
     # 修改
     storage["uniform_search"][payload_data["yid"]] = {
@@ -251,10 +258,17 @@ def enable_uniform():
 
     storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
     
-    # 返回结果
-    return flask.jsonify({"Success":"enable successfully","Status":True}), 200
+    # 返回结果，附带 school_service 信息
+    return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"]}), 200
 
-
+# 测试用
+@app.route("/tect/save", methods=['POST'])
+def tect_save_storage():
+    if agree_debug:
+        end_storage()
+        return _make_response("save successfully", True, {}), 200
+    else:
+        return _make_response("REJECT & FORBIDDEN", False, {}), 403
 
 is_saved=False
 if __name__ == '__main__':
