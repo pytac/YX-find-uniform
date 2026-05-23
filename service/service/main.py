@@ -261,6 +261,38 @@ def enable_uniform():
     # 返回结果，附带 school_service 信息
     return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"]}), 200
 
+@app.route("/user/loss", methods=['POST'])
+def loss():
+    '''
+    payload:
+    {
+        "yid": 衣服id
+    }
+    最后一次测试: 2026-05-23 21:39
+    '''
+    payload_data = flask.request.json
+    
+    # 判断衣服是否存在
+    if (payload_data["yid"] not in storage["uniform_search"]):
+        return _make_response("yid not found", False, {}), 404
+    
+    # 判断是否已被激活
+    if (not storage["uniform_search"][payload_data["yid"]]["is_active"]):
+        return _make_response("yid is not active", False, {}), 423
+    
+    # 反馈给学校
+    sid = storage["uniform_search"][payload_data["yid"]]["sid"]
+    response = send_msg_to_school(sid, "/service/loss",{
+        "yid": payload_data["yid"],
+    })
+    print(response.json())
+    if (response.status_code != 200):
+        # 将学校返回的错误信息放入 Detail
+        error_detail = response.json() if response.json() else {}
+        return _make_response("school loss failed", False, error_detail), response.status_code
+
+    return _make_response("lossing report successfully", True, {"sid": sid}), 200
+
 # 测试用
 @app.route("/tect/save", methods=['POST'])
 def tect_save_storage():
