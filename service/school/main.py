@@ -116,6 +116,8 @@ def cleanup_information():
     删除 information 中 auto_delete=True 且超过 15 天的消息。
     15 天 = 15 * 24 * 3600 秒。
     该函数在执行时会获取 data_lock，确保并发安全。
+
+    最后一次测试: 2026-05-23 22:40
     """
     now_ts = int(time_module.time())
     expire_seconds = 15 * 24 * 3600
@@ -171,7 +173,7 @@ def enable():
         "uid": uid,
         "student": student id(e.g. "20240101")
     }
-    最后一次测试: 2026-05-17 17:47
+    最后一次测试: 2026-05-23 22:32
     """
     payload_data = flask.request.json
     yid = payload_data['yid']
@@ -194,7 +196,7 @@ def get_msg():
     {
         "uid": uid
     }
-    最后一次测试: 2026-05-17 17:53
+    最后一次测试: 2026-05-23 22:40
     """
     data = flask.request.json
     uid = data['uid']
@@ -212,7 +214,7 @@ def loss():
     {
         "yid": yid,
     }
-    最后一次测试: 2026-05-23 21:39
+    最后一次测试: 2026-05-23 22:37
     """
     payload_data = flask.request.json
     yid = payload_data['yid']

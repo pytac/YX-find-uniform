@@ -5,19 +5,13 @@ from time import time      # 获取时间戳
 import uuid
 import sys                 # 获取命令行参数
 import requests            # 发送请求
+import threading           # 添加全局锁
 
 # 初始化 --------------------------------
 
 storage_file = os.path.join(os.path.dirname(__file__), 'storage.json')
 
 agree_debug = False
-# use_uuid4 = True           # 只用 uuid5,4
-
-# def start_init_agree_debug():
-#     global agree_debug
-#     argv = sys.argv[1:]
-#     if len(argv) > 0 and '--agree-debug' in argv:
-#         agree_debug = True
 
 def start_init_prompt():
     global agree_debug, use_uuid4
@@ -32,12 +26,10 @@ def start_init_prompt():
 
     if  '--agree-debug' in argv:
         agree_debug = True
-    
-    # if '--use-uuid5' in argv:
-    #     use_uuid4 = False
 
 
 storage = None
+storage_lock = threading.RLock()  # 全局可重入锁
 
 def start_init_storage():
     
@@ -72,9 +64,10 @@ def start_init_storage():
 # 结束 --------------------------------
 def end_storage():
     print("saving!")
-    with open(storage_file, 'w') as f:
-        f.write(json.dumps(storage, indent=4))
-        # json.dump(storage, f)
+    with storage_lock:  # 保存时加锁
+        with open(storage_file, 'w') as f:
+            f.write(json.dumps(storage, indent=4))
+            # json.dump(storage, f)
 
 # 必要函数 --------------------------------
 
@@ -84,7 +77,9 @@ def generate_uniform_id():
     return uuid.uuid4()
 
 def send_msg_to_school(sid,path,msg):
-    url = storage["school_register_search"][sid]["school_service"]+path
+    # 读取学校服务地址时需要加锁
+    with storage_lock:
+        url = storage["school_register_search"][sid]["school_service"]+path
     
     # 处理URL - 假如有 // 则合并
     url = url.split("//")
@@ -114,7 +109,7 @@ def make_uniform():
         ("yid": "服装ID",  当 agree_debug 时)
     }
 
-    最后一次测试: 2026-05-17 17:20
+    最后一次测试: 2026-05-23 21:50
     '''
 
     # 初始化数据集
@@ -125,8 +120,9 @@ def make_uniform():
     if ("sid" not in payload_data):
         return _make_response("sid is required", False, {}), 400
     # 错误 - 学校ID不存在
-    if (payload_data["sid"] not in storage["school_register_search"]):
-        return _make_response("sid not found", False, {}), 404
+    with storage_lock:
+        if (payload_data["sid"] not in storage["school_register_search"]):
+            return _make_response("sid not found", False, {}), 404
     
     # 生成服装ID
     YID = generate_uniform_id()
@@ -146,11 +142,12 @@ def make_uniform():
     
     # 本地更新
     # 更新服装信息
-    storage["uniform_search"][YID] = {
-        "is_active": False,
-        "sid": payload_data["sid"],
-        "detail": None
-    }
+    with storage_lock:
+        storage["uniform_search"][YID] = {
+            "is_active": False,
+            "sid": payload_data["sid"],
+            "detail": None
+        }
 
     # 返回结果
     return _make_response("Make uniform success", True, result), 200
@@ -167,7 +164,7 @@ def school_resgister():
         "school_service": "学校服务地址",
     }
 
-    最后一次测试: 2026-05-05 16:05
+    最后一次测试: 2026-05-05 16:05 ~> 2026-05-23 21:54
     '''
     payload_data = flask.request.json
 
@@ -177,31 +174,32 @@ def school_resgister():
         if (not i in payload_data):
             return _make_response(f"{i} is required", False, {}), 400
     
-    # 判断重复
-    exist_list1 = ["name",              "sid"]
-    exist_list2 = ["exist_school_name" ,"school_register_search"]
-    for i in range(len(exist_list1)):
-        if (payload_data[exist_list1[i]] in storage[exist_list2[i]]):
-            return _make_response(f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist", False, {}), 400
-        
-    # 弱密码判断  撇了
+    # 判断重复（加锁保护整个检查+注册过程）
+    with storage_lock:
+        exist_list1 = ["name",              "sid"]
+        exist_list2 = ["exist_school_name" ,"school_register_search"]
+        for i in range(len(exist_list1)):
+            if (payload_data[exist_list1[i]] in storage[exist_list2[i]]):
+                return _make_response(f"{exist_list1[i]} ({payload_data[exist_list1[i]]}) is exist", False, {}), 400
+            
+        # 弱密码判断  撇了
 
-    # 注册
-    # 需要修改 school_register_search, exist_school_name
+        # 注册
+        # 需要修改 school_register_search, exist_school_name
 
-    storage["school_register_search"][payload_data["sid"]] =  {
-        "name": payload_data["name"],
-        "password": payload_data["password"],
-        "school_service": payload_data["school_service"],
-    }
+        storage["school_register_search"][payload_data["sid"]] =  {
+            "name": payload_data["name"],
+            "password": payload_data["password"],
+            "school_service": payload_data["school_service"],
+        }
 
-    storage["exist_school_name"].append(payload_data["name"])
+        storage["exist_school_name"].append(payload_data["name"])
 
-    # 返回结果
-    if (storage["school_register_search"][payload_data["sid"]]["name"] != payload_data["name"]):
-        return _make_response("school_register_search in error (register failed)", False, {}), 500
-    if (not payload_data["name"] in storage["exist_school_name"]):
-        return _make_response("exist_school_name in error (register failed)", False, {}), 500
+        # 返回结果
+        if (storage["school_register_search"][payload_data["sid"]]["name"] != payload_data["name"]):
+            return _make_response("school_register_search in error (register failed)", False, {}), 500
+        if (not payload_data["name"] in storage["exist_school_name"]):
+            return _make_response("exist_school_name in error (register failed)", False, {}), 500
 
     return _make_response("register successfully", True, {}), 200
 
@@ -214,7 +212,7 @@ def enable_uniform():
         "uid": 用户id,
         "student": 学号
     }
-    最后一次测试: 2026-05-17 17:47
+    最后一次测试: 2026-05-23 22:32
     '''
     payload_data = flask.request.json
 
@@ -224,17 +222,19 @@ def enable_uniform():
         if (not i in payload_data):
             return _make_response(f"{i} is required", False, {}), 400
     
-    # 判断服装是否存在
-    if (payload_data["yid"] not in storage["uniform_search"]):
-        return _make_response("yid not found", False, {}), 404
-    # 判断是否已被激活
-    if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
-        return _make_response("yid is already active", False, {}), 423
-    
+    # 读取服装信息并判断（加锁）
+    with storage_lock:
+        # 判断服装是否存在
+        if (payload_data["yid"] not in storage["uniform_search"]):
+            return _make_response("yid not found", False, {}), 404
+        # 判断是否已被激活
+        if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
+            return _make_response("yid is already active", False, {}), 423
+        
+        sid = storage["uniform_search"][payload_data["yid"]]["sid"]
     
     # 发送激活消息给学校
-    print(storage["uniform_search"][payload_data["yid"]])
-    sid = storage["uniform_search"][payload_data["yid"]]["sid"]
+    print(storage["uniform_search"][payload_data["yid"]])  # 注意：这行在锁外读取，但只是为了打印，不影响逻辑
     response = send_msg_to_school(sid, "/service/enable",{
         "yid": payload_data["yid"],
         "uid": payload_data["uid"],
@@ -246,17 +246,21 @@ def enable_uniform():
         error_detail = response.json() if response.json() else {}
         return _make_response("school enable failed", False, error_detail), response.status_code
 
-    # 修改
-    storage["uniform_search"][payload_data["yid"]] = {
-        "is_active": True,
-        "sid": sid,
-        "detail": {
-            "uid": payload_data["uid"],
-            "student": payload_data["student"]
+    # 修改本地存储（加锁）
+    with storage_lock:
+        storage["uniform_search"][payload_data["yid"]] = {
+            "is_active": True,
+            "sid": sid,
+            "detail": {
+                "uid": payload_data["uid"],
+                "student": payload_data["student"]
+            }
         }
-    }
 
-    storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
+        # 如果用户不存在，下面这行会报 KeyError，原代码如此，不修改
+        if (payload_data["uid"] not in storage["user_uniform"]):
+            storage["user_uniform"][payload_data["uid"]] = []
+        storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
     
     # 返回结果，附带 school_service 信息
     return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"]}), 200
@@ -268,20 +272,23 @@ def loss():
     {
         "yid": 衣服id
     }
-    最后一次测试: 2026-05-23 21:39
+    最后一次测试: 2026-05-23 22:37
     '''
     payload_data = flask.request.json
     
-    # 判断衣服是否存在
-    if (payload_data["yid"] not in storage["uniform_search"]):
-        return _make_response("yid not found", False, {}), 404
+    # 加锁读取和判断
+    with storage_lock:
+        # 判断衣服是否存在
+        if (payload_data["yid"] not in storage["uniform_search"]):
+            return _make_response("yid not found", False, {}), 404
+        
+        # 判断是否已被激活
+        if (not storage["uniform_search"][payload_data["yid"]]["is_active"]):
+            return _make_response("yid is not active", False, {}), 423
+        
+        sid = storage["uniform_search"][payload_data["yid"]]["sid"]
     
-    # 判断是否已被激活
-    if (not storage["uniform_search"][payload_data["yid"]]["is_active"]):
-        return _make_response("yid is not active", False, {}), 423
-    
-    # 反馈给学校
-    sid = storage["uniform_search"][payload_data["yid"]]["sid"]
+    # 反馈给学校（锁外发送请求）
     response = send_msg_to_school(sid, "/service/loss",{
         "yid": payload_data["yid"],
     })
