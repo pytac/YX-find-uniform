@@ -82,3 +82,12 @@ storage = {
     }
 }
 ```
+
+
+# 其他
+
+## 代办
+
+- school: 学校初始化注册
+- readme: 完善 school 的 `storage` 格式说明
+- school: 消息通知的改写

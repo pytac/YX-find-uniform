@@ -45,8 +45,8 @@ def start_init_storage():
             "uniform_search": {
             },
 
-            "user_uniform":{
-            }
+            # "user_uniform":{
+            # }
         }
 
         if agree_debug:
@@ -258,9 +258,9 @@ def enable_uniform():
         }
 
         # 如果用户不存在，下面这行会报 KeyError，原代码如此，不修改
-        if (payload_data["uid"] not in storage["user_uniform"]):
-            storage["user_uniform"][payload_data["uid"]] = []
-        storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
+        # if (payload_data["uid"] not in storage["user_uniform"]):
+        #     storage["user_uniform"][payload_data["uid"]] = []
+        # storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
     
     # 返回结果，附带 school_service 信息
     return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"]}), 200
@@ -299,6 +299,39 @@ def loss():
         return _make_response("school loss failed", False, error_detail), response.status_code
 
     return _make_response("lossing report successfully", True, {"sid": sid}), 200
+
+@app.route("/school/delete", methods=['POST'])
+def delete_uniform():
+    """
+    payload:
+    {
+        "yid": 衣服id,
+        "sid": 学校id,
+        "password": 密码
+    }
+    最后一次测试: 2026-05-24 21:01
+    """
+    payload_data = flask.request.json
+    yid = payload_data["yid"]
+    sid = payload_data["sid"]
+
+    # 判断密码
+    if (payload_data["password"] != storage["school_register_search"][sid]["password"]):
+        return _make_response("forbidden", False, {}), 403
+
+    # 判断服装是否存在
+    if (yid not in storage["uniform_search"]):
+        return _make_response("yid not found", False, {}), 404
+    # 判断是否是此学校的
+    if (storage["uniform_search"][yid]["sid"] != sid):
+        return _make_response("yid not found", False, {}), 404
+    # 判断是否已被激活
+    if (not storage["uniform_search"][yid]["is_active"]):
+        return _make_response("yid is not active", False, {}), 423
+    
+    # 删除服装
+    del storage["uniform_search"][yid]
+    return _make_response("delete successfully", True, {}), 200
 
 # 测试用
 @app.route("/tect/save", methods=['POST'])

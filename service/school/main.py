@@ -1,4 +1,5 @@
 import flask
+import requests
 import json
 from time import time
 import os,sys
@@ -26,9 +27,12 @@ storage = None
 def start_init_storage():
     """
     {
+        "school_name":"Example School",
+        "sid":"Example",
+        "service":"http://127.0.0.1:5000",
         "admin":{
             "username":"admin",
-            "password":"123456"
+            "password":"123456",
         },
         "uniform":{
             "yid":{
@@ -55,6 +59,15 @@ def start_init_storage():
                 },
                 "uniform":{}   # 改为字典，与原结构说明一致
             }
+        if agree_debug:
+            storage['school_name'] = "Example School"
+            storage['sid'] = "Example"
+            storage['service'] = "http://127.0.0.1:5000"
+        else:
+            storage['school_name'] = input("[init] Type school name: ")
+            storage['sid'] = input("[init] Type sid: ")
+            storage['service'] = input("[init] Type service url: ")
+            # 在远程注册 （代办）
     else:
         with open(storage_file, 'r') as f:
             storage = json.load(f)
@@ -71,10 +84,10 @@ information = None
 def start_init_information():
     """
     type:
-         1 - 丢失通知 - detail: {"yid": yid}
-         2 - 通知用户已领取 - detail: {"yid": yid}
-         3 - 激活衣服通知 - detail: {"yid": yid}
-         4 - 学校删除衣服通知 - detail: {"yid": yid}
+         1 - 丢失通知 - detail: {"yid": yid, "name": school_name}
+         2 - 通知用户已领取 - detail: {"yid": yid, "name": school_name}
+         3 - 激活衣服通知 - detail: {"yid": yid, "name": school_name}
+         4 - 学校删除衣服通知 - detail: {"yid": yid, "name": school_name}
     {
         "uid":[{
                 "type": type,
@@ -110,6 +123,15 @@ def make_response(phrase, status, detail=None):
         "Detail": detail
     })
 
+def send_information(uid, type, time, auto_delete=True, detail={}):
+    if uid not in information:
+        information[uid] = []
+    information[uid].append({
+        "type": type,
+        "time": time,
+        "auto_delete": auto_delete,
+        "detail": detail
+    })
 # ------------------ 定时清理 information ------------------
 def cleanup_information():
     """
@@ -226,16 +248,59 @@ def loss():
 
         # 发送消息给用户
         uid = storage['uniform'][yid]['detail']['uid']
-        if uid not in information:
-            information[uid] = []
-        information[uid].append({
+        send_information(**{
+            "uid": uid,
             "type": 1,
             "time": int(time()),
             "auto_delete": False,
-            "detail": {"yid": yid}
+            "detail": {"yid": yid, "name": storage['school_name']}
         })
 
     return make_response("lossing report successful", True, {}), 200
+
+@app.route("/admin/delete", methods=['POST'])
+def delete_uniform():
+    """"
+    payload:
+    {
+        "password_local": password,
+        "password_remote": password(remote),
+        "yid": yid,
+    }
+    最后一次测试: 2026-05-24 21:01
+    """
+    payload_data = flask.request.json
+    password = payload_data['password_local']
+    yid = payload_data['yid']
+
+    with data_lock:
+        # 判断密码是否正确
+        if password != storage['admin']['password']:
+            return make_response("forbidden", False, {}), 403
+        # 判断衣服是否存在
+        if yid not in storage['uniform']:
+            return make_response("yid not found", False, {}), 404
+        # 删除衣服
+        # 远程
+        response = requests.post(storage['service'] + "/school/delete", json={
+            "password": payload_data['password_remote'],
+            "yid": yid,
+            "sid": storage['sid']
+        })
+        if response.status_code != 200:
+            return make_response("remote delete uniform failed", False, response.json() if response.json() else {}), response.status_code
+        # 本地
+        uid = storage['uniform'][yid]['detail']['uid']
+        del storage['uniform'][yid]
+        # 通知
+        send_information(**{
+            "uid": uid,
+            "type": 4,
+            "time": int(time()),
+            "auto_delete": True,
+            "detail": {"yid": yid, "name": storage['school_name']}
+        })
+        return make_response("delete uniform", True, {}), 200
 
 # 测试用
 @app.route("/tect/save", methods=['POST'])
