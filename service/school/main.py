@@ -89,12 +89,21 @@ def start_init_information():
          3 - 激活衣服通知 - detail: {"yid": yid, "name": school_name}
          4 - 学校删除衣服通知 - detail: {"yid": yid, "name": school_name}
     {
-        "uid":[{
+        # "uid":[{
+        #         "type": type,
+        #         "time": time,
+        #         "auto_delete": t/f (15天后自动删除),
+        #         "detail": {detail...}
+        #     },...]
+        
+        "uid": {
+            "time(id)": {
                 "type": type,
                 "time": time,
                 "auto_delete": t/f (15天后自动删除),
                 "detail": {detail...}
-            },...]
+            }
+        }
     }
     """
     global information
@@ -123,23 +132,36 @@ def make_response(phrase, status, detail=None):
         "Detail": detail
     })
 
-def send_information(uid, type, time, auto_delete=True, detail={}):
+def send_information(uid, type, time_val, auto_delete=True, detail={}):
+    """
+    注意：参数名改为 time_val 避免与导入的 time 模块或函数冲突，
+    但在调用时请确保传入的是时间戳数值。
+    """
+    global information
+    
+    # 确保 uid 存在，且值为字典
     if uid not in information:
-        information[uid] = []
-    information[uid].append({
-        "type": type,
-        "time": time,
-        "auto_delete": auto_delete,
-        "detail": detail
-    })
+        information[uid] = {}
+    
+    # 使用 int 类型的时间戳作为 Key
+    # 使用 int(time_val * 1000) 可以提供毫秒级精度，减少同一秒内消息覆盖的风险
+    # 如果业务严格限制 Key 为秒级时间戳，请使用 int(time_val)
+    msg_key = int(time_val) 
+    
+    with data_lock:
+        # 直接存入字典
+        information[uid][msg_key] = {
+            "type": type,
+            "time": time_val,      # 原始时间保留在 value 中
+            "auto_delete": auto_delete,
+            "detail": detail
+        }
+
 # ------------------ 定时清理 information ------------------
 def cleanup_information():
     """
     删除 information 中 auto_delete=True 且超过 15 天的消息。
-    15 天 = 15 * 24 * 3600 秒。
-    该函数在执行时会获取 data_lock，确保并发安全。
-
-    最后一次测试: 2026-05-23 22:40
+    适配新的字典结构 (Key为int时间戳)
     """
     now_ts = int(time_module.time())
     expire_seconds = 15 * 24 * 3600
@@ -147,26 +169,39 @@ def cleanup_information():
     empty_users = []
 
     with data_lock:
-        for uid, msg_list in list(information.items()):
-            new_list = []
-            for msg in msg_list:
+        # 遍历所有用户
+        for uid, msg_dict in list(information.items()):
+            keys_to_delete = []
+            
+            # 遍历该用户下的所有消息 (key是int, value是消息详情)
+            for msg_key, msg in msg_dict.items():
                 auto_del = msg.get('auto_delete', False)
                 msg_time = msg.get('time', 0)
-                # 确保 msg_time 是数值类型
+                
+                # 确保 msg_time 是数值类型用于计算
                 try:
-                    msg_time = int(msg_time)
+                    msg_time = float(msg_time) 
                 except (TypeError, ValueError):
                     msg_time = 0
+                
+                # 判断是否过期
                 if auto_del and (now_ts - msg_time) > expire_seconds:
+                    keys_to_delete.append(msg_key)
                     deleted_count += 1
-                    continue
-                new_list.append(msg)
-            if new_list:
-                information[uid] = new_list
-            else:
+            
+            # 执行删除
+            for key in keys_to_delete:
+                if key in information[uid]: # 二次检查防止并发错误
+                    del information[uid][key]
+                    
+            # 如果该用户没有消息了，标记为待删除用户
+            if not information[uid]:
                 empty_users.append(uid)
+
+        # 删除空的用户条目
         for uid in empty_users:
-            del information[uid]
+            if uid in information:
+                del information[uid]
 
     if deleted_count > 0 or empty_users:
         print(f"[Cleanup] Removed {deleted_count} expired messages, removed {len(empty_users)} empty user entries.")
@@ -216,18 +251,30 @@ def get_msg():
     """
     payload:
     {
-        "uid": uid
+     "uid": uid
     }
-    最后一次测试: 2026-05-23 22:40
+    return:
+    {
+        "msg": {
+            1716700000000: { "type": 1, ... },
+            1716700001000: { "type": 2, ... }
+        }
+    }
+    最后一次测试: 2026-05-26 16:43
     """
     data = flask.request.json
     uid = data['uid']
+    
     with data_lock:
         if uid not in information:
-            return make_response("get msg success", True, {"msg": []}), 200
-        # 返回副本，避免外部修改
-        msg_copy = information[uid][:]
-    return make_response("get msg success", True, {"msg": msg_copy}), 200
+            # 返回空字典而不是空列表
+            return make_response("get msg success", True, {"msg": {}}), 200
+        
+        # 直接返回该用户的消息字典副本
+        # dict(information[uid]) 创建浅拷贝，防止外部修改影响内部结构
+        msg_dict = dict(information[uid])
+        
+        return make_response("get msg success", True, {"msg": msg_dict}), 200
 
 @app.route('/service/loss', methods=['POST'])
 def loss():
@@ -318,6 +365,15 @@ def tect_clear():
         return make_response("clear successfully", True, {}), 200
     else:
         return make_response("REJECT & FORBIDDEN", False, {}), 403
+
+@app.route("/tect/send_information", methods=['POST'])
+def tect_send():
+    if agree_debug:
+        send_information(** flask.request.json)
+        return make_response("send successfully", True, {}), 200
+    else:
+        return make_response("REJECT & FORBIDDEN", False, {}), 403
+    
 
 # is_saved = False
 if __name__ == '__main__':
