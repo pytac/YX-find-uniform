@@ -263,7 +263,7 @@ def enable_uniform():
         # storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
     
     # 返回结果，附带 school_service 信息
-    return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"]}), 200
+    return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"],"name": storage["school_register_search"][sid]["name"]}), 200
 
 @app.route("/user/loss", methods=['POST'])
 def loss():
