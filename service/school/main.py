@@ -143,10 +143,9 @@ def send_information(uid, type, time_val, auto_delete=True, detail={}):
     if uid not in information:
         information[uid] = {}
     
-    # 使用 int 类型的时间戳作为 Key
-    # 使用 int(time_val * 1000) 可以提供毫秒级精度，减少同一秒内消息覆盖的风险
-    # 如果业务严格限制 Key 为秒级时间戳，请使用 int(time_val)
-    msg_key = int(time_val) 
+    # json 只能接受 str 为键
+    # 使用 str 类型的时间戳作为 Key
+    msg_key = str(time_val)
     
     with data_lock:
         # 直接存入字典
@@ -244,6 +243,13 @@ def enable():
                 "student": payload_data['student']
             }
         }
+        send_information(**{
+            "uid": payload_data['uid'],
+            "type": 2,
+            "time_val": int(time()),
+            "auto_delete": False,
+            "detail": {"yid": yid, "name": storage['school_name']}
+        })
     return make_response("enable success", True, {}), 200
 
 @app.route('/user/get_msg', methods=['POST'])
@@ -298,7 +304,7 @@ def loss():
         send_information(**{
             "uid": uid,
             "type": 1,
-            "time": int(time()),
+            "time_val": int(time()),
             "auto_delete": False,
             "detail": {"yid": yid, "name": storage['school_name']}
         })
@@ -343,7 +349,7 @@ def delete_uniform():
         send_information(**{
             "uid": uid,
             "type": 4,
-            "time": int(time()),
+            "time_val": int(time()),
             "auto_delete": True,
             "detail": {"yid": yid, "name": storage['school_name']}
         })
