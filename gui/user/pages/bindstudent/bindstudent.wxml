@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="header">
+    <view class="title">绑定校服</view>
+    <view class="subtitle">请填写学号完成绑定</view>
+  </view>
+
+  <view class="card">
+    <view class="card-label">校服YID</view>
+    <view class="card-value">{{yid}}</view>
+  </view>
+
+  <view class="card" style="margin-top: 24rpx;">
+    <view class="card-label">学号</view>
+    <input class="input" type="text" placeholder="请输入学号" value="{{studentValue}}" bindinput="onStudentInput" maxlength="20" />
+    <view class="hint">请输入你的学号，用于绑定校服</view>
+  </view>
+
+  <view class="actions">
+    <button class="submit-btn" bindtap="onSubmit">
+      <text>确认绑定</text>
+    </button>
+  </view>
+</view>

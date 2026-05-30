@@ -247,7 +247,7 @@ def enable():
             "uid": payload_data['uid'],
             "type": 2,
             "time_val": int(time()),
-            "auto_delete": False,
+            "auto_delete": True,
             "detail": {"yid": yid, "name": storage['school_name']}
         })
     return make_response("enable success", True, {}), 200

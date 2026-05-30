@@ -1,0 +1,98 @@
+.page {
+  min-height: 100vh;
+  background: #F5F5F5;
+}
+
+.settings-header {
+  background: linear-gradient(135deg, #4CAF50, #66BB6A);
+  padding: 50rpx 30rpx;
+  text-align: center;
+}
+
+.settings-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.settings-subtitle {
+  font-size: 24rpx;
+  color: rgba(255,255,255,0.8);
+  margin-top: 10rpx;
+}
+
+.settings-card {
+  background: #fff;
+  margin: -30rpx 20rpx 0;
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.08);
+  position: relative;
+  z-index: 10;
+}
+
+.form-group {
+  margin-bottom: 40rpx;
+}
+
+.form-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.form-input-wrapper {
+  background: #F5F5F5;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #E0E0E0;
+  transition: border-color 0.3s;
+}
+
+.form-input-wrapper:focus-within {
+  border-color: #4CAF50;
+}
+
+.form-input {
+  width: 100%;
+  height: 88rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.form-hint {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 12rpx;
+}
+
+.save-btn {
+  width: 100%;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 24rpx 0;
+  border-radius: 50rpx;
+  border: none;
+  box-shadow: 0 6rpx 24rpx rgba(76,175,80,0.35);
+}
+
+.save-btn::after {
+  border: none;
+}
+
+.save-btn:active {
+  background: #388E3C;
+}
+
+.settings-info {
+  text-align: center;
+  margin-top: 60rpx;
+}
+
+.info-text {
+  font-size: 22rpx;
+  color: #bbb;
+}

@@ -1,0 +1,23 @@
+{
+  "libVersion": "3.10.3",
+  "projectname": "YX-%E7%94%A8%E6%88%B7%E7%AB%AF",
+  "setting": {
+    "urlCheck": true,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "compileHotReLoad": false,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "useStaticServer": false,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "bigPackageSizeSupport": false,
+    "checkInvalidKey": true,
+    "useIsolateContext": true,
+    "ignoreDevUnusedFiles": true
+  }
+}
