@@ -15,23 +15,28 @@ Page({
     this.setData({ yidValue: e.detail.value });
   },
 
-  onCameraError(e) {
-    console.error('摄像头错误:', e);
-  },
-
+  // 点击"开始扫码"调起系统扫码
   onScan() {
-    const ctx = wx.createCameraContext();
-    ctx.takePhoto({
-      quality: 'low',
+    wx.scanCode({
+      onlyFromCamera: false,
+      scanType: ['qrCode'],
       success: (res) => {
-        wx.showToast({ title: '扫码成功', icon: 'success' });
+        const result = res.result || '';
+        wx.showToast({
+          title: '扫码成功',
+          icon: 'success'
+        });
         this.setData({
-          scanResult: 'YID-' + Date.now().toString().slice(-6),
+          scanResult: result,
           showModal: true
         });
       },
       fail: (err) => {
-        wx.showToast({ title: '扫码失败，请手动输入YID', icon: 'none' });
+        // 用户点左上角叉叉取消扫码，回到输入页面
+        wx.showToast({
+          title: '已取消扫码，可手动输入YID',
+          icon: 'none'
+        });
       }
     });
   },

@@ -44,6 +44,7 @@ App({
     this.globalData.messages[timeId] = {
       type: msg.type,
       time: msg.time,
+      timestamp: msg.timestamp || 0,
       auto_delete: msg.auto_delete || false,
       detail: msg.detail || {}
     };

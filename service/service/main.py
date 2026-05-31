@@ -348,7 +348,7 @@ if __name__ == '__main__':
     start_init_prompt()
     start_init_storage()
 
-    app.run(debug=False, host="127.0.0.1", port=5000)
+    app.run(debug=False, host="192.168.101.7", port=5000)
 
     end_storage()
     sys.exit(0)

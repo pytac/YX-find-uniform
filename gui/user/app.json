@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/scan/scan",
     "pages/adduniform/adduniform",
     "pages/reportloss/reportloss",
     "pages/settings/settings",

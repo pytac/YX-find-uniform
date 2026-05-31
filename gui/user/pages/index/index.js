@@ -36,6 +36,15 @@ Page({
       return;
     }
 
+    // 如果没有绑定校服，不发送 get_msg 请求
+    const uniforms = wx.getStorageSync('uniforms') || [];
+    if (uniforms.length === 0) {
+      app.globalData.messages = {};
+      wx.setStorageSync('messages', {});
+      this.setData({ messageList: [] });
+      return;
+    }
+
     // 优先使用学校服务器地址获取消息
     let msgUrl = app.globalData.serverUrl;
     const schoolUrl = this.getSchoolServiceUrl();
@@ -60,6 +69,7 @@ Page({
               time_id: timeId,
               type: msg.type,
               time: timeStr,
+              timestamp: msg.time, // 保留原始时间戳用于排序
               auto_delete: msg.auto_delete || false,
               detail: msg.detail || {}
             });
@@ -69,10 +79,11 @@ Page({
             timeId,
             ...messages[timeId]
           }));
+          // 按时间戳降序排列：越晚的消息越在上面
           list.sort((a, b) => {
-            if (a.time < b.time) return 1;
-            if (a.time > b.time) return -1;
-            return 0;
+            const tsA = a.timestamp || 0;
+            const tsB = b.timestamp || 0;
+            return tsB - tsA;
           });
           this.setData({ messageList: list });
         } else {

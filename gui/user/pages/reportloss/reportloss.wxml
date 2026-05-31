@@ -4,14 +4,16 @@
     <view class="scan-subtitle">扫描或输入丢失校服的YID进行报告</view>
   </view>
 
-  <!-- 扫码区域（去除"开始扫码"按钮） -->
+  <!-- 扫码区域 -->
   <view class="camera-area">
     <view class="camera-box">
-      <camera class="camera" device-position="back" flash="off" binderror="onCameraError"></camera>
       <view class="scan-frame">
         <view class="scan-line"></view>
       </view>
     </view>
+    <button class="scan-camera-btn" bindtap="onScan">
+      <text>开始扫码</text>
+    </button>
   </view>
 
   <!-- 或 分隔 -->

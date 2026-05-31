@@ -7,13 +7,20 @@
   <!-- 扫码区域 -->
   <view class="camera-area">
     <view class="camera-box">
-      <camera class="camera" device-position="back" flash="off" binderror="onCameraError"></camera>
       <view class="scan-frame">
         <view class="scan-line"></view>
       </view>
     </view>
     <button class="scan-camera-btn" bindtap="onScan">
       <text>开始扫码</text>
+    </button>
+    <button class="album-btn" bindtap="onChooseFromAlbum">
+      <image class="album-icon" src="/images/album.png" mode="aspectFit" />
+      <text>从相册选图识别</text>
+    </button>
+    <!-- 手动输入按钮 -->
+    <button class="manual-btn" bindtap="onManualInput">
+      <text>手动输入</text>
     </button>
   </view>
 

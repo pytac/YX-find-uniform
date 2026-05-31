@@ -20,21 +20,18 @@ Page({
     this.setData({ yidValue: e.detail.value });
   },
 
-  onCameraError(e) {
-    console.error('摄像头错误:', e);
-  },
-
   onScan() {
-    const ctx = wx.createCameraContext();
-    ctx.takePhoto({
-      quality: 'low',
+    wx.scanCode({
+      onlyFromCamera: false,
+      scanType: ['qrCode'],
       success: (res) => {
+        const result = res.result || '';
         wx.showToast({
           title: '扫码成功',
           icon: 'success'
         });
         this.setData({
-          scanResult: 'YID-' + Date.now().toString().slice(-6),
+          scanResult: result,
           showModal: true
         });
       },
@@ -44,6 +41,57 @@ Page({
           icon: 'none'
         });
       }
+    });
+  },
+
+  onChooseFromAlbum() {
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['original'],
+      sourceType: ['album'],
+      success: (res) => {
+        const tempFilePath = res.tempFilePaths[0];
+        wx.showLoading({ title: '识别中...' });
+        wx.scanCode({
+          onlyFromCamera: false,
+          scanType: ['qrCode'],
+          success: (scanRes) => {
+            wx.hideLoading();
+            const result = scanRes.result || '';
+            wx.showToast({
+              title: '识别成功',
+              icon: 'success'
+            });
+            this.setData({
+              scanResult: result,
+              showModal: true
+            });
+          },
+          fail: (err) => {
+            wx.hideLoading();
+            wx.showToast({
+              title: '未识别到二维码，请手动输入YID',
+              icon: 'none'
+            });
+          }
+        });
+      },
+      fail: (err) => {
+        wx.showToast({
+          title: '选择图片失败',
+          icon: 'none'
+        });
+      }
+    });
+  },
+
+  // 手动输入按钮 - 直接聚焦到输入框
+  onManualInput() {
+    this.setData({ yidValue: '' });
+    // 滚动到输入区域
+    wx.pageScrollTo({
+      selector: '.input-area',
+      duration: 300
     });
   },
 
@@ -70,13 +118,11 @@ Page({
     const { mode, scanResult } = this.data;
 
     if (mode === 'add') {
-      // 添加模式：跳转到输入学号页面
       wx.navigateTo({
         url: '/pages/bindstudent/bindstudent?yid=' + encodeURIComponent(scanResult)
       });
       this.setData({ showModal: false, scanResult: '', yidValue: '' });
     } else {
-      // 丢失模式：直接提交
       const uid = app.globalData.uid;
       const serverUrl = app.globalData.serverUrl;
       if (!uid) {
