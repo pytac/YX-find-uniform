@@ -88,32 +88,6 @@
   border: none;
 }
 
-/* 从相册选图按钮 */
-.album-btn {
-  margin-top: 16rpx;
-  background: #fff;
-  color: #333;
-  font-size: 26rpx;
-  font-weight: 500;
-  padding: 12rpx 40rpx;
-  border-radius: 40rpx;
-  border: 2rpx solid #ddd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
-}
-
-.album-btn::after {
-  border: none;
-}
-
-.album-icon {
-  width: 32rpx;
-  height: 32rpx;
-}
-
 /* 手动输入按钮 */
 .manual-btn {
   margin-top: 16rpx;

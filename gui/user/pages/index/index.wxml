@@ -53,6 +53,18 @@
       </view>
       <view class="message-footer">
         <text class="auto-delete-tag" wx:if="{{item.auto_delete}}">15天后自动删除</text>
+        <view class="action-buttons">
+          <!-- 丢失通知(type=1)：显示扫码图标 -->
+          <button class="action-icon-btn scan-btn" wx:if="{{item.type === 1}}" bindtap="onClaimLoss" data-timeid="{{item.timeId}}" data-yid="{{item.detail.yid}}">
+            <image class="action-icon-small" src="/images/icon_scan_code.png" mode="aspectFit" />
+            <text class="action-icon-text">领取</text>
+          </button>
+          <!-- 其他通知：显示垃圾桶图标 -->
+          <button class="action-icon-btn delete-btn" wx:else bindtap="onDeleteMsg" data-timeid="{{item.timeId}}">
+            <image class="action-icon-small" src="/images/icon_delete.png" mode="aspectFit" />
+            <text class="action-icon-text">删除</text>
+          </button>
+        </view>
       </view>
     </view>
   </view>

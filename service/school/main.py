@@ -457,8 +457,8 @@ if __name__ == '__main__':
     # 启动定时清理线程（程序启动时立即清理一次，之后每小时一次）
     start_cleanup_thread()
 
-    # app.run(debug=False, host='192.168.101.7', port=8888)
-    app.run(debug=False, host='127.0.0.1', port=8888)
+    app.run(debug=False, host='192.168.101.7', port=8888)
+    # app.run(debug=False, host='127.0.0.1', port=8888)
     
     end_storage()
     sys.exit(0)

@@ -225,6 +225,9 @@
 
 .message-footer {
   margin-top: 12rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .auto-delete-tag {
@@ -233,6 +236,55 @@
   background: #F5F5F5;
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12rpx;
+}
+
+.action-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  border: none;
+  border-radius: 30rpx;
+  min-width: auto;
+  min-height: auto;
+  line-height: 1;
+  font-size: 22rpx;
+}
+
+.action-icon-btn::after {
+  border: none;
+}
+
+.delete-btn {
+  background: #F5F5F5;
+  color: #999;
+}
+
+.delete-btn:active {
+  background: #EEEEEE;
+}
+
+.scan-btn {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.scan-btn:active {
+  background: #C8E6C9;
+}
+
+.action-icon-small {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.action-icon-text {
+  font-size: 22rpx;
 }
 
 .empty-state {

@@ -114,6 +114,64 @@ Page({
     this.fetchMessagesFromServer();
   },
 
+  // 删除消息（非丢失通知）
+  onDeleteMsg(e) {
+    const timeId = e.currentTarget.dataset.timeid;
+    const uid = app.globalData.uid;
+    if (!uid) {
+      wx.showToast({ title: '请先设置UID', icon: 'none' });
+      return;
+    }
+
+    let msgUrl = app.globalData.serverUrl;
+    const schoolUrl = this.getSchoolServiceUrl();
+    if (schoolUrl) {
+      msgUrl = schoolUrl;
+    }
+
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除这条消息吗？',
+      success: (res) => {
+        if (res.confirm) {
+          wx.request({
+            url: msgUrl + '/user/del_msg',
+            method: 'POST',
+            data: { uid, key: timeId },
+            success: (res) => {
+              if (res.data && res.data.Status) {
+                wx.showToast({ title: '删除成功', icon: 'success' });
+                // 重新获取消息
+                this.fetchMessagesFromServer();
+              } else {
+                wx.showToast({ title: res.data.Phrase || '删除失败', icon: 'none' });
+              }
+            },
+            fail: () => {
+              wx.showToast({ title: '请求失败', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+  },
+
+  // 领取丢失衣物（丢失通知 → 扫码输入YID → 调用API）
+  onClaimLoss(e) {
+    const timeId = e.currentTarget.dataset.timeid;
+    const yid = e.currentTarget.dataset.yid;
+    const uid = app.globalData.uid;
+    if (!uid) {
+      wx.showToast({ title: '请先设置UID', icon: 'none' });
+      return;
+    }
+
+    // 跳转到扫码/输入页面，传入参数
+    wx.navigateTo({
+      url: `/pages/scan/scan?mode=claimLoss&timeId=${timeId}&yid=${yid}`
+    });
+  },
+
   timestampToStr(ts) {
     const d = new Date(ts * 1000);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;

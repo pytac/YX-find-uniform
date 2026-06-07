@@ -5,15 +5,23 @@ Page({
     mode: 'add',
     showModal: false,
     scanResult: '',
-    yidValue: ''
+    yidValue: '',
+    // 领取丢失模式专用
+    claimTimeId: '',
+    claimYid: ''
   },
 
   onLoad(options) {
     const mode = options.mode || 'add';
-    this.setData({ mode });
-    wx.setNavigationBarTitle({
-      title: mode === 'add' ? '添加校服' : '报告丢失'
-    });
+    const claimTimeId = options.timeId || '';
+    const claimYid = options.yid || '';
+    this.setData({ mode, claimTimeId, claimYid });
+
+    let title = mode === 'add' ? '添加校服' : '报告丢失';
+    if (mode === 'claimLoss') {
+      title = '领取丢失校服';
+    }
+    wx.setNavigationBarTitle({ title });
   },
 
   onYidInput(e) {
@@ -115,14 +123,54 @@ Page({
   },
 
   onConfirm() {
-    const { mode, scanResult } = this.data;
+    const { mode, scanResult, claimTimeId } = this.data;
 
     if (mode === 'add') {
       wx.navigateTo({
         url: '/pages/bindstudent/bindstudent?yid=' + encodeURIComponent(scanResult)
       });
       this.setData({ showModal: false, scanResult: '', yidValue: '' });
+    } else if (mode === 'claimLoss') {
+      // 领取丢失衣物模式
+      const uid = app.globalData.uid;
+      if (!uid) {
+        wx.showToast({ title: '请先在设置中填写UID', icon: 'none' });
+        return;
+      }
+
+      // 获取学校服务器地址
+      let msgUrl = app.globalData.serverUrl;
+      const uniforms = wx.getStorageSync('uniforms') || [];
+      for (const u of uniforms) {
+        if (u.schoolService) {
+          msgUrl = u.schoolService;
+          break;
+        }
+      }
+
+      wx.showLoading({ title: '提交中...' });
+      wx.request({
+        url: msgUrl + '/user/get_loss',
+        method: 'POST',
+        data: { uid, yid: scanResult, key: claimTimeId },
+        success: (res) => {
+          wx.hideLoading();
+          if (res.data && res.data.Status) {
+            wx.showToast({ title: '领取成功', icon: 'success' });
+            this.setData({ showModal: false, scanResult: '', yidValue: '' });
+            // 返回首页并刷新消息
+            wx.navigateBack();
+          } else {
+            wx.showToast({ title: res.data.Phrase || '领取失败', icon: 'none' });
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '网络错误，请检查服务器', icon: 'none' });
+        }
+      });
     } else {
+      // 报告丢失模式
       const uid = app.globalData.uid;
       const serverUrl = app.globalData.serverUrl;
       if (!uid) {

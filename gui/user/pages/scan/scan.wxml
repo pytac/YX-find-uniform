@@ -1,7 +1,7 @@
 <view class="page">
   <view class="scan-header">
-    <view class="scan-title">{{mode === 'add' ? '添加校服' : '报告丢失'}}</view>
-    <view class="scan-subtitle">{{mode === 'add' ? '扫描或输入校服上的YID进行添加' : '扫描或输入丢失校服的YID进行报告'}}</view>
+    <view class="scan-title">{{mode === 'add' ? '添加校服' : mode === 'claimLoss' ? '领取丢失校服' : '报告丢失'}}</view>
+    <view class="scan-subtitle">{{mode === 'add' ? '扫描或输入校服上的YID进行添加' : mode === 'claimLoss' ? '扫描或输入丢失校服的YID进行领取' : '扫描或输入丢失校服的YID进行报告'}}</view>
   </view>
 
   <!-- 扫码区域 -->
@@ -13,14 +13,6 @@
     </view>
     <button class="scan-camera-btn" bindtap="onScan">
       <text>开始扫码</text>
-    </button>
-    <button class="album-btn" bindtap="onChooseFromAlbum">
-      <image class="album-icon" src="/images/album.png" mode="aspectFit" />
-      <text>从相册选图识别</text>
-    </button>
-    <!-- 手动输入按钮 -->
-    <button class="manual-btn" bindtap="onManualInput">
-      <text>手动输入</text>
     </button>
   </view>
 
