@@ -290,6 +290,7 @@ def del_msg():
         "uid":uid,
         "key":msg_key
     }
+    最后一次测试: 2026-06-07 20:07
     """
     payload = flask.request.json
     uid = payload["uid"]
@@ -335,6 +336,47 @@ def loss():
         })
 
     return make_response("lossing report successful", True, {}), 200
+
+@app.route("/user/get_loss", methods=['POST'])
+def get_loss():
+    """
+    payload:
+    {
+        "uid": uid,
+        "yid": yid,
+        "key": key => 对应丢失衣服的 key
+    }
+    最后一次测试: 
+    """
+    payload = flask.request.json
+    uid = payload["uid"]
+    yid = payload["yid"]
+    key = payload["key"]
+
+    with data_lock:
+        if (not (uid in information)):
+            return make_response("uid not found",False,{}), 404
+        if (not (key in information[uid])):
+            return make_response("key not found",False,{}), 404
+        if (information[uid][key]["type"] != 1):
+            return make_response("key is not loss information",False,{}), 404
+        if (information[uid][key]["detail"]["yid"] != yid):
+            return make_response("yid is not belong to key",False,{}), 404
+        
+        if (not (yid in storage["uniform"])):
+            return make_response("yid not found",False,{}), 404
+        if (storage["uniform"][yid]["detail"]["uid"] != uid):
+            return make_response("yid is not belong to uid",False,{}), 403
+        
+        del information[uid][key]
+        send_information(**{
+            "uid": uid,
+            "type": 2,
+            "time_val": int(time()),
+            "auto_delete": True,
+            "detail": {"yid": yid, "name": storage['school_name']}
+        })
+        return make_response("get loss success", True, {"yid": yid, "key": key}), 200
 
 @app.route("/admin/delete", methods=['POST'])
 def delete_uniform():
