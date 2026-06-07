@@ -282,6 +282,31 @@ def get_msg():
         
         return make_response("get msg success", True, {"msg": msg_dict}), 200
 
+@app.route("/user/del_msg", methods=['POST'])
+def del_msg():
+    """
+    payload:
+    {
+        "uid":uid,
+        "key":msg_key
+    }
+    """
+    payload = flask.request.json
+    uid = payload["uid"]
+    key = payload["key"]
+
+    with data_lock:
+        if (not (uid in information)):
+            return make_response("uid not found",False,{}), 404
+        if (not (key in information[uid])):
+            return make_response("key not found",False,{}), 404
+        
+        if (information[uid][key]["type"] == 1):
+            return make_response("loss information cannot be deleted",False,{}), 423
+        
+        del information[uid][key]
+        return make_response("delete msg success", True, {"key": key}), 200
+
 @app.route('/service/loss', methods=['POST'])
 def loss():
     """
@@ -390,7 +415,8 @@ if __name__ == '__main__':
     # 启动定时清理线程（程序启动时立即清理一次，之后每小时一次）
     start_cleanup_thread()
 
-    app.run(debug=False, host='192.168.101.7', port=8888)
-
+    # app.run(debug=False, host='192.168.101.7', port=8888)
+    app.run(debug=False, host='127.0.0.1', port=8888)
+    
     end_storage()
     sys.exit(0)
