@@ -1,0 +1,274 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scan-header {
+  text-align: center;
+  padding: 40rpx 30rpx 20rpx;
+}
+
+.scan-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.scan-subtitle {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 10rpx;
+}
+
+/* 扫码区域 */
+.camera-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 0;
+}
+
+.camera-box {
+  width: 340rpx;
+  height: 270rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.1);
+}
+
+.camera {
+  width: 100%;
+  height: 100%;
+}
+
+.scan-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200rpx;
+  height: 200rpx;
+  border: 4rpx solid #4CAF50;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-line {
+  width: 160rpx;
+  height: 4rpx;
+  background: #4CAF50;
+  animation: scanMove 2s ease-in-out infinite;
+}
+
+@keyframes scanMove {
+  0%, 100% { transform: translateY(-75rpx); }
+  50% { transform: translateY(75rpx); }
+}
+
+.scan-camera-btn {
+  margin-top: 60rpx;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  padding: 20rpx 80rpx;
+  border-radius: 50rpx;
+  border: none;
+  box-shadow: 0 8rpx 30rpx rgba(76,175,80,0.4);
+}
+
+.scan-camera-btn::after {
+  border: none;
+}
+
+/* 手动输入按钮 */
+.manual-btn {
+  margin-top: 16rpx;
+  background: #fff;
+  color: #4CAF50;
+  font-size: 26rpx;
+  font-weight: 600;
+  padding: 12rpx 40rpx;
+  border-radius: 40rpx;
+  border: 2rpx solid #4CAF50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.manual-btn::after {
+  border: none;
+}
+
+/* 分隔线 */
+.divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 60rpx;
+  box-sizing: border-box;
+}
+
+.divider-line {
+  flex: 1;
+  height: 2rpx;
+  background: #ddd;
+}
+
+.divider-text {
+  padding: 0 24rpx;
+  font-size: 24rpx;
+  color: #bbb;
+}
+
+/* 输入区域 */
+.input-area {
+  width: 100%;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+}
+
+.input-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06);
+}
+
+.input-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.yid-input {
+  width: 100%;
+  height: 80rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.input-hint {
+  font-size: 22rpx;
+  color: #bbb;
+  margin-top: 12rpx;
+}
+
+.scan-actions {
+  margin-top: 40rpx;
+  padding-bottom: 40rpx;
+}
+
+.scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  padding: 20rpx 80rpx;
+  border-radius: 50rpx;
+  box-shadow: 0 8rpx 30rpx rgba(76,175,80,0.4);
+  border: none;
+}
+
+.scan-btn::after {
+  border: none;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 24rpx;
+  width: 600rpx;
+  padding: 40rpx;
+  box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.3);
+}
+
+.modal-header {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid #f0f0f0;
+}
+
+.modal-body {
+  padding: 20rpx 0;
+}
+
+.modal-label {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 12rpx;
+}
+
+.modal-value {
+  font-size: 28rpx;
+  color: #333;
+  background: #F5F5F5;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.modal-footer {
+  margin-top: 30rpx;
+  display: flex;
+  justify-content: center;
+  gap: 30rpx;
+}
+
+.modal-btn {
+  min-width: 200rpx;
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: none;
+}
+
+.modal-btn::after {
+  border: none;
+}
+
+.confirm-btn {
+  background: #4CAF50;
+  color: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(76,175,80,0.3);
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  color: #666;
+}

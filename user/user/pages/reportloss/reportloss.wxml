@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="scan-header">
+    <view class="scan-title">报告丢失</view>
+    <view class="scan-subtitle">扫描或输入丢失校服的YID进行报告</view>
+  </view>
+
+  <!-- 扫码区域 -->
+  <view class="camera-area">
+    <view class="camera-box">
+      <view class="scan-frame">
+        <view class="scan-line"></view>
+      </view>
+    </view>
+    <button class="scan-camera-btn" bindtap="onScan">
+      <text>开始扫码</text>
+    </button>
+  </view>
+
+  <!-- 或 分隔 -->
+  <view class="divider">
+    <view class="divider-line"></view>
+    <view class="divider-text">或</view>
+    <view class="divider-line"></view>
+  </view>
+
+  <!-- 手动输入YID区域 -->
+  <view class="input-area">
+    <view class="input-card">
+      <view class="input-label">手动输入YID（衣服ID）</view>
+      <input class="yid-input" type="text" placeholder="请输入YID" value="{{yidValue}}" bindinput="onYidInput" maxlength="50" />
+      <view class="input-hint">请输入校服上的YID编号</view>
+    </view>
+  </view>
+
+  <view class="scan-actions">
+    <button class="scan-btn" bindtap="onSubmit">
+      <text>确认提交</text>
+    </button>
+  </view>
+
+  <view class="modal-overlay" wx:if="{{showModal}}">
+    <view class="modal-content">
+      <view class="modal-header">确认信息</view>
+      <view class="modal-body">
+        <view class="modal-label">YID：</view>
+        <view class="modal-value">{{scanResult}}</view>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-btn cancel-btn" bindtap="onCancel">取消</button>
+        <button class="modal-btn confirm-btn" bindtap="onConfirm">确定</button>
+      </view>
+    </view>
+  </view>
+</view>
