@@ -152,6 +152,22 @@ def make_uniform():
     # 返回结果
     return _make_response("Make uniform success", True, result), 200
 
+@app.route("/maker/check_sid", methods=['POST'])
+def check_sid():
+    '''
+    payload:
+    {
+        "sid": "学校ID",
+    }
+
+    最后一次测试: 2026-06-19 14:25
+    '''
+    payload_data = flask.request.json
+
+    if ("sid" not in payload_data):
+        return _make_response("sid is required", False, {}), 400
+    
+    return _make_response("Check sid success", True, {"res": payload_data["sid"] in storage["school_register_search"]}), 200
 
 @app.route("/school/register", methods=['POST'])
 def school_resgister():

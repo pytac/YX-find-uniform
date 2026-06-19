@@ -16,18 +16,25 @@
 ## 接口索引
 
 - [总服务器端（Central Server）](#总服务器端central-server)
-  - [1. 生成衣物ID - /maker/make](#1-生成衣物id)
-  - [2. 学校注册 - /school/register](#2-学校注册)
-  - [3. 用户激活衣物 - /user/enable](#3-用户激活衣物)
-  - [4. 上报衣物丢失 - /user/loss](#4-上报衣物丢失)
-  - [5. 学校删除衣物 - /school/delete](#5-学校删除衣物)
+  - [maker](#maker)
+    - [生成衣物ID - /maker/make](#生成衣物id)
+    - [检查学校ID - /maker/check_sid](#检查学校id)
+  - [school（总服务器）](#school总服务器)
+    - [学校注册 - /school/register](#学校注册)
+    - [学校删除衣物 - /school/delete](#学校删除衣物)
+  - [user（总服务器）](#user总服务器)
+    - [用户激活衣物 - /user/enable](#用户激活衣物)
+    - [上报衣物丢失 - /user/loss](#上报衣物丢失)
 - [学校端（School Server）](#学校端school-server)
-  - [1. 激活衣物（学校本地） - /service/enable](#1-激活衣物学校本地)
-  - [2. 获取用户消息 - /user/get_msg](#2-获取用户消息)
-  - [3. 删除用户消息 - /user/del_msg](#3-删除用户消息)
-  - [4. 上报衣物丢失（学校本地） - /service/loss](#4-上报衣物丢失学校本地)
-  - [5. 用户领取丢失衣物 - /user/get_loss](#5-用户领取丢失衣物)
-  - [6. 管理员删除衣物 - /admin/delete](#6-管理员删除衣物)
+  - [service](#service)
+    - [激活衣物（学校本地） - /service/enable](#激活衣物学校本地)
+    - [上报衣物丢失（学校本地） - /service/loss](#上报衣物丢失学校本地)
+  - [user（学校端）](#user学校端)
+    - [获取用户消息 - /user/get_msg](#获取用户消息)
+    - [删除用户消息 - /user/del_msg](#删除用户消息)
+    - [用户领取丢失衣物 - /user/get_loss](#用户领取丢失衣物)
+  - [admin](#admin)
+    - [管理员删除衣物 - /admin/delete](#管理员删除衣物)
 
 ---
 
@@ -36,7 +43,9 @@
 总服务器运行于中心节点，负责学校注册、衣物ID生成、用户激活/丢失上报的跨校转发以及学校端衣物删除的同步。  
 **默认地址**：`http://127.0.0.1:5000`（可在启动时修改）
 
-## 1. 生成衣物ID
+## maker
+
+### 生成衣物ID
 **`POST /maker/make`**
 
 为指定学校生成一个未激活的衣物唯一标识（YID）。
@@ -64,7 +73,35 @@
 
 ---
 
-## 2. 学校注册
+### 检查学校ID
+**`POST /maker/check_sid`**
+
+检查指定的 `sid` 是否已在总服务器中注册。
+
+**请求体 (JSON)**
+| 字段  | 类型   | 必填 | 说明     |
+|-------|--------|------|----------|
+| `sid` | string | 是   | 学校ID   |
+
+**成功响应**
+```json
+{
+  "Phrase": "Check sid success",
+  "Status": true,
+  "Detail": {
+    "res": true   // true表示已注册，false表示未注册
+  }
+}
+```
+
+**错误响应**
+- 缺少 `sid`：400 `{"Phrase":"sid is required", "Status":false}`
+
+---
+
+## school（总服务器）
+
+### 学校注册
 **`POST /school/register`**
 
 新学校在总服务器注册，信息包括名称、ID、密码及本校服务地址。
@@ -92,7 +129,37 @@
 
 ---
 
-## 3. 用户激活衣物
+### 学校删除衣物
+**`POST /school/delete`**
+
+学校管理员验证密码后，从总服务器删除衣物记录（仅删除，不通知学校端）。
+
+**请求体 (JSON)**
+| 字段       | 类型   | 必填 | 说明               |
+|------------|--------|------|--------------------|
+| `yid`      | string | 是   | 衣物ID             |
+| `sid`      | string | 是   | 学校ID             |
+| `password` | string | 是   | 学校管理员密码     |
+
+**成功响应**
+```json
+{
+  "Phrase": "delete successfully",
+  "Status": true,
+  "Detail": {}
+}
+```
+
+**错误响应**
+- 密码错误：403 `{"Phrase":"forbidden", "Status":false}`
+- `yid` 不存在或不属于该学校：404 `{"Phrase":"yid not found", "Status":false}`
+- 衣物未激活：423 `{"Phrase":"yid is not active", "Status":false}`
+
+---
+
+## user（总服务器）
+
+### 用户激活衣物
 **`POST /user/enable`**
 
 用户绑定并激活某衣物，总服务器会通知对应学校进行本地激活，并将本地的衣物状态更新为 `is_active: true`。
@@ -124,7 +191,7 @@
 
 ---
 
-## 4. 上报衣物丢失
+### 上报衣物丢失
 **`POST /user/loss`**
 
 用户上报衣物丢失，总服务器会转发丢失通知到对应学校。
@@ -152,40 +219,14 @@
 
 ---
 
-## 5. 学校删除衣物
-**`POST /school/delete`**
-
-学校管理员验证密码后，从总服务器删除衣物记录（仅删除，不通知学校端）。
-
-**请求体 (JSON)**
-| 字段       | 类型   | 必填 | 说明               |
-|------------|--------|------|--------------------|
-| `yid`      | string | 是   | 衣物ID             |
-| `sid`      | string | 是   | 学校ID             |
-| `password` | string | 是   | 学校管理员密码     |
-
-**成功响应**
-```json
-{
-  "Phrase": "delete successfully",
-  "Status": true,
-  "Detail": {}
-}
-```
-
-**错误响应**
-- 密码错误：403 `{"Phrase":"forbidden", "Status":false}`
-- `yid` 不存在或不属于该学校：404 `{"Phrase":"yid not found", "Status":false}`
-- 衣物未激活：423 `{"Phrase":"yid is not active", "Status":false}`
-
----
-
 # 学校端（School Server）
 
 学校端运行于各学校本地，负责本校衣物的激活、用户消息的存储与查询、丢失上报的处理以及管理员删除衣物。  
 **默认地址**：`http://127.0.0.1:8888`（当前版本启动时绑定 `192.168.101.7:8888`）
 
-## 1. 激活衣物（学校本地）
+## service
+
+### 激活衣物（学校本地）
 **`POST /service/enable`**
 
 由总服务器调用，将衣物标记为已激活，并给用户发送一条“已领取”消息（type=2）。
@@ -209,7 +250,34 @@
 
 ---
 
-## 2. 获取用户消息
+### 上报衣物丢失（学校本地）
+**`POST /service/loss`**
+
+由总服务器调用，标记衣物丢失并给用户发送一条丢失通知（type=1）。
+
+**请求体 (JSON)**
+| 字段  | 类型   | 必填 | 说明   |
+|-------|--------|------|--------|
+| `yid` | string | 是   | 衣物ID |
+
+**成功响应**
+```json
+{
+  "Phrase": "lossing report successful",
+  "Status": true,
+  "Detail": {}
+}
+```
+同时用户会收到一条 type=1 的消息（不会自动删除）。
+
+**错误响应**
+- `yid` 不存在：404 `{"Phrase":"yid not found", "Status":false}`
+
+---
+
+## user（学校端）
+
+### 获取用户消息
 **`POST /user/get_msg`**
 
 查询指定用户的所有消息（包括丢失通知、领取通知、删除通知等）。
@@ -244,7 +312,7 @@
 
 ---
 
-## 3. 删除用户消息
+### 删除用户消息
 **`POST /user/del_msg`**
 
 用户手动删除一条非丢失通知的消息（类型为1的丢失通知不允许删除）。
@@ -273,32 +341,7 @@
 
 ---
 
-## 4. 上报衣物丢失（学校本地）
-**`POST /service/loss`**
-
-由总服务器调用，标记衣物丢失并给用户发送一条丢失通知（type=1）。
-
-**请求体 (JSON)**
-| 字段  | 类型   | 必填 | 说明   |
-|-------|--------|------|--------|
-| `yid` | string | 是   | 衣物ID |
-
-**成功响应**
-```json
-{
-  "Phrase": "lossing report successful",
-  "Status": true,
-  "Detail": {}
-}
-```
-同时用户会收到一条 type=1 的消息（不会自动删除）。
-
-**错误响应**
-- `yid` 不存在：404 `{"Phrase":"yid not found", "Status":false}`
-
----
-
-## 5. 用户领取丢失衣物
+### 用户领取丢失衣物
 **`POST /user/get_loss`**
 
 用户确认已找回丢失衣物，系统会删除对应的丢失通知（type=1）并追加一条领取成功通知（type=2）。
@@ -331,7 +374,9 @@
 
 ---
 
-## 6. 管理员删除衣物
+## admin
+
+### 管理员删除衣物
 **`POST /admin/delete`**
 
 学校管理员验证本地密码后，请求总服务器删除该衣物，并给用户发送一条删除通知（type=4）。
