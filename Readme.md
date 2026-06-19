@@ -10,9 +10,16 @@
 - - school: 学校相关接口
 - - service: 服务相关接口
 - user: 用户端
-- - maker: 制造商界面
-- - school: 学校界面
 - - user: 普通用户界面
+- - maker: 制造商界面
+
+
+<a id="other"></a>
+
+## 其他
+
+- [存储格式](docs/storage.md)
+- [接口文档](docs/api.md)
 
 ## 协议
 
@@ -21,11 +28,7 @@
 如要获取许可证，请用 [邮箱联系我(pythongchong@outlook.com)](mailto:pythonchong@outlook.com)
 
 
-<a id="other"></a>
-
-# 其他
-
-- [存储格式](docs/storage.md)
-- <i>[接口文档](docs/api.md) (未制作)</i>
-
 ## 代办
+
+- [ ] 完善用户界面
+- [ ] 制作制造商接口

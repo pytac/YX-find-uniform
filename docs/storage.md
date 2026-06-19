@@ -1,12 +1,12 @@
-[返回](../Readme.md#other)
+[返回](../Readme.md#其他)
 
 <a id="top"></a>
 
 # 快捷跳转
 
-- [跳转 service \ storage 格式](#service-storage)
-- [跳转 school \ storage 格式](#school-storage)
-- [跳转 school \ information 格式](#school-information)
+- [跳转 service \ storage 格式](#service--storage-格式)
+- [跳转 school \ storage 格式](#school--storage-格式)
+- [跳转 school \ information 格式](#school--information-格式)
 
 # 存储格式
 
@@ -15,8 +15,6 @@
 `YID` 表示 `服装ID`
 
 `UID` 表示 `用户ID`
-
-<a id="service-storage"></a>
 
 # service \ storage 格式
 
@@ -53,7 +51,7 @@ sotrage:
 
 ## 表示代码（可跳过不看）
 
-[跳转 school \ storage 格式](#school-storage)
+[跳转 school \ storage 格式](#school--storage-格式)
 
 ```python
 storage = {
@@ -107,8 +105,6 @@ storage = {
 }
 ```
 
-<a id="school-storage"></a>
-
 # school \ storage 格式
 
 storage:
@@ -132,7 +128,7 @@ storage:
 
 ## 表示代码（可跳过不看）
 
-[跳转 school \ information 格式](#school-information)
+[跳转 school \ information 格式](#school--information-格式)
 
 ```python
 storage = {
@@ -152,8 +148,6 @@ storage = {
     }
 }
 ```
-
-<a id="school-information"></a>
 
 # school \ information 格式
 
@@ -209,5 +203,4 @@ information = {
         }
     }
 }
-
 ```
