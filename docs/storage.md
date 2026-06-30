@@ -49,7 +49,9 @@ sotrage:
 - <i> user_uniform: 用户服装信息 - 已废弃 </i>
 
 
-## 表示代码（可跳过不看）
+<details>
+
+<summary>表示代码（可跳过不看）</summary>
 
 [跳转 school \ storage 格式](#school--storage-格式)
 
@@ -105,6 +107,8 @@ storage = {
 }
 ```
 
+</details>
+
 # school \ storage 格式
 
 storage:
@@ -126,7 +130,8 @@ storage:
             - `uid`: 用户ID
             - `student`: 学号 (type: `String`)
 
-## 表示代码（可跳过不看）
+<details>
+<summary>表示代码（可跳过不看）</summary>
 
 [跳转 school \ information 格式](#school--information-格式)
 
@@ -148,6 +153,9 @@ storage = {
     }
 }
 ```
+
+</details>
+
 
 # school \ information 格式
 
@@ -181,7 +189,8 @@ storage = {
             - `yid`: 服装ID
             - `name`: 学校名字
 
-## 表示代码（可跳过不看）
+<details>
+<summary>表示代码（可跳过不看）</summary>
 
 [回到开头](#top)
 
@@ -204,3 +213,5 @@ information = {
     }
 }
 ```
+
+</details>
