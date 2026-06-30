@@ -1,6 +1,6 @@
 {
   "libVersion": "3.10.3",
-  "projectname": "user",
+  "projectname": "YX-%E7%94%A8%E6%88%B7%E7%AB%AF",
   "setting": {
     "urlCheck": true,
     "coverView": true,
@@ -9,7 +9,7 @@
     "preloadBackgroundData": false,
     "autoAudits": false,
     "showShadowRootInWxmlPanel": true,
-    "compileHotReLoad": true,
+    "compileHotReLoad": false,
     "useApiHook": true,
     "useApiHostProcess": true,
     "useStaticServer": false,
@@ -19,6 +19,5 @@
     "checkInvalidKey": true,
     "useIsolateContext": true,
     "ignoreDevUnusedFiles": true
-  },
-  "condition": {}
+  }
 }

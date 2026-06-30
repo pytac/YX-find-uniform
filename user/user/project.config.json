@@ -47,8 +47,8 @@
     "useCompilerPlugins": false
   },
   "compileType": "miniprogram",
-  "libVersion": "3.10.3",
-  "appid": "wxbc592eb8a0be3fe0",
+  "libVersion": "3.3.4",
+  "appid": "wxf1859f4e0a123eec",
   "projectname": "校服寻找工具",
   "condition": {},
   "editorSetting": {

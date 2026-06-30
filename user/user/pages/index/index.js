@@ -3,6 +3,7 @@ const app = getApp();
 Page({
   data: {
     messageList: [],
+    unreadCount: 0,
     showAddModal: false,
     addYid: '',
     addStudent: '',
@@ -32,7 +33,7 @@ Page({
   fetchMessagesFromServer() {
     const uid = app.globalData.uid;
     if (!uid) {
-      this.setData({ messageList: [] });
+      this.setData({ messageList: [], unreadCount: 0 });
       return;
     }
 
@@ -41,7 +42,7 @@ Page({
     if (uniforms.length === 0) {
       app.globalData.messages = {};
       wx.setStorageSync('messages', {});
-      this.setData({ messageList: [] });
+      this.setData({ messageList: [], unreadCount: 0 });
       return;
     }
 
@@ -85,11 +86,14 @@ Page({
             const tsB = b.timestamp || 0;
             return tsB - tsA;
           });
-          this.setData({ messageList: list });
+          this.setData({ 
+            messageList: list,
+            unreadCount: list.length
+          });
         } else {
           app.globalData.messages = {};
           wx.setStorageSync('messages', {});
-          this.setData({ messageList: [] });
+          this.setData({ messageList: [], unreadCount: 0 });
         }
       },
       fail: () => {
@@ -100,7 +104,7 @@ Page({
         });
         app.globalData.messages = {};
         wx.setStorageSync('messages', {});
-        this.setData({ messageList: [] });
+        this.setData({ messageList: [], unreadCount: 0 });
       }
     });
   },

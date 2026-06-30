@@ -24,7 +24,9 @@
   </view>
 
   <view class="section-title">
-    <text class="section-title-text">消息通知</text>
+    <view class="section-title-left">
+      <text class="section-title-text">消息通知</text>
+    </view>
     <button class="refresh-btn" bindtap="onRefresh">
       <image class="refresh-icon" src="/images/icon_refresh.png" mode="aspectFit" />
     </button>

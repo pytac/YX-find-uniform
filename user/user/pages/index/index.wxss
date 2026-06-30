@@ -97,6 +97,12 @@
   justify-content: space-between;
 }
 
+.section-title-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .section-title-text {
   font-size: 30rpx;
   font-weight: 600;
