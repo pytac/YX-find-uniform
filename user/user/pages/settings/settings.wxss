@@ -96,3 +96,16 @@
   font-size: 22rpx;
   color: #bbb;
 }
+
+.settings-footer {
+  margin-top: 24rpx;
+  padding: 0 40rpx 60rpx;
+  text-align: center;
+}
+
+.footer-line {
+  font-size: 20rpx;
+  color: #AAAAAA;
+  line-height: 1.9;
+  word-break: break-all;
+}

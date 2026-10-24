@@ -29,4 +29,10 @@
   <view class="settings-info">
     <text class="info-text">校服寻找工具 v1.0.0（测试版）</text>
   </view>
+
+  <view class="settings-footer">
+    <view class="footer-line">项目地址: https://github.com/pytac/YX-find-uniform</view>
+    <view class="footer-line">开源协议: PolyForm-Noncommercial-1.0.0</view>
+    <view class="footer-line">(c) 2026 Pytac, All Rights Reserved.</view>
+  </view>
 </view>
