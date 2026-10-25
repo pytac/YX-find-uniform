@@ -61,6 +61,22 @@
   color: #333;
 }
 
+/* 只读展示：外观与输入框一致，但不可聚焦、不可编辑 */
+.form-readonly {
+  background: #F5F5F5;
+  border-radius: 12rpx;
+  border: 2rpx solid #E0E0E0;
+  padding: 22rpx 24rpx;
+}
+
+.form-readonly-text {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+  letter-spacing: 1rpx;
+  word-break: break-all;
+}
+
 .form-hint {
   font-size: 22rpx;
   color: #999;

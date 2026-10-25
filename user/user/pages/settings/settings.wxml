@@ -7,10 +7,10 @@
   <view class="settings-card">
     <view class="form-group">
       <view class="form-label">用户UID</view>
-      <view class="form-input-wrapper">
-        <input class="form-input" type="text" placeholder="自动生成，可修改" value="{{uid}}" bindinput="onUidInput" />
+      <view class="form-readonly">
+        <text class="form-readonly-text" user-select="{{true}}">{{uid || '未生成'}}</text>
       </view>
-      <view class="form-hint">你的用户唯一标识，已自动生成，也可以手动修改</view>
+      <view class="form-hint">由系统自动生成的唯一标识，仅可查看</view>
     </view>
 
     <view class="form-group">

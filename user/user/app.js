@@ -11,52 +11,56 @@ App({
       this.globalData.serverUrl = savedUrl;
     }
 
-    // 先尝试从本地读取已保存的UID
-    let savedUid = wx.getStorageSync('uid')
-    if (savedUid) {
-      this.globalData.uid = savedUid
-    }
+    // 用户唯一编码：首次启动生成 UUID v4 并永久保存，之后不再变化。
+    // 必须同步完成，否则页面 onLoad 会读到空 uid。
+    this.globalData.uid = this.ensureUid();
 
-    // 使用云数据库获取微信用户的_openid作为唯一UID
-    if (wx.cloud) {
-      wx.cloud.init()
-    }
-    const db = wx.cloud.database()
-    db.collection('users').where({
-      _openid: '{openid}'  // 云开发自动匹配当前用户
-    }).get().then(res => {
-      if (res.data.length > 0) {
-        // 已有记录，用_openid作为UID
-        this.globalData.uid = res.data[0]._openid
-        wx.setStorageSync('uid', this.globalData.uid)
-      } else {
-        // 新用户，创建记录
-        db.collection('users').add({
-          data: {
-            uid: '',
-            createdAt: db.serverDate()
-          }
-        }).then(addRes => {
-          // 再查一次获取_openid
-          db.collection('users').doc(addRes._id).get().then(docRes => {
-            this.globalData.uid = docRes.data._openid
-            wx.setStorageSync('uid', this.globalData.uid)
-          })
-        })
-      }
-    }).catch(() => {
-      // 云数据库不可用时，如果本地已有UID则保留，否则生成一个固定的
-      if (!wx.getStorageSync('uid')) {
-        const fixedUid = 'UID-' + Date.now().toString().slice(-8)
-        wx.setStorageSync('uid', fixedUid)
-        this.globalData.uid = fixedUid
-      }
-    })
-
-    const savedMessages = wx.getStorageSync('messages')
+    const savedMessages = wx.getStorageSync('messages');
     if (savedMessages) {
-      this.globalData.messages = savedMessages
+      this.globalData.messages = savedMessages;
     }
+  },
+
+  // 读取本机已保存的用户编码，没有则生成一个
+  ensureUid() {
+    let uid = '';
+    try {
+      uid = wx.getStorageSync('uid') || '';
+    } catch (e) {
+      uid = '';
+    }
+
+    // 历史版本可能存过 openid 或 "UID-时间戳"，只要长度合理就沿用，
+    // 避免改动编码后与服务端已绑定的数据（校服、消息）对不上
+    if (typeof uid === 'string' && uid.length >= 8 && uid.length <= 64) {
+      return uid;
+    }
+
+    const newUid = this.createUuid();
+    try {
+      wx.setStorageSync('uid', newUid);
+    } catch (e) {
+      // 存储不可用时至少保证本次运行有编码可用
+    }
+    return newUid;
+  },
+
+  // 生成小写 UUID v4
+  createUuid() {
+    const hex = '0123456789abcdef';
+    let out = '';
+    for (let i = 0; i < 36; i += 1) {
+      if (i === 8 || i === 13 || i === 18 || i === 23) {
+        out += '-';
+      } else if (i === 14) {
+        out += '4';
+      } else if (i === 19) {
+        out += hex[Math.floor(Math.random() * 4) | 8];
+      } else {
+        out += hex[Math.floor(Math.random() * 16)];
+      }
+    }
+    return out;
   },
 
   saveServerUrl(url) {
@@ -66,11 +70,6 @@ App({
     }
     this.globalData.serverUrl = cleanUrl
     wx.setStorageSync('serverUrl', cleanUrl)
-  },
-
-  saveUid(uid) {
-    this.globalData.uid = uid
-    wx.setStorageSync('uid', uid)
   },
 
   addMessage(msg) {

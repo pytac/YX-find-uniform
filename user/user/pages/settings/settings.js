@@ -7,21 +7,20 @@ Page({
   },
 
   onLoad() {
+    // 只读展示；正常情况下 onLaunch 已经生成，这里只是兜底
+    const uid = app.globalData.uid || (app.ensureUid ? app.ensureUid() : '');
+    if (uid && !app.globalData.uid) {
+      app.globalData.uid = uid;
+    }
     this.setData({
       serverUrl: app.globalData.serverUrl,
-      uid: app.globalData.uid
+      uid: uid
     });
   },
 
   onUrlInput(e) {
     this.setData({
       serverUrl: e.detail.value
-    });
-  },
-
-  onUidInput(e) {
-    this.setData({
-      uid: e.detail.value
     });
   },
 
@@ -38,7 +37,6 @@ Page({
       url = url.slice(0, -1);
     }
     app.saveServerUrl(url);
-    app.saveUid(this.data.uid.trim());
     this.setData({ serverUrl: url });
     wx.showToast({
       title: '保存成功',

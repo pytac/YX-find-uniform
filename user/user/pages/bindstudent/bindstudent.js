@@ -27,7 +27,7 @@ Page({
     const serverUrl = app.globalData.serverUrl;
 
     if (!uid) {
-      wx.showToast({ title: '请先在设置中填写UID', icon: 'none' });
+      wx.showToast({ title: '用户标识异常，请重启小程序', icon: 'none' });
       return;
     }
 
