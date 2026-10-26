@@ -64,7 +64,7 @@ Page({
             wx.reLaunch({ url: '/pages/index/index' });
           }, 1500);
         } else {
-          wx.showToast({ title: res.data.Phrase || '绑定失败', icon: 'none' });
+          wx.showToast({ title: app.phraseText(res.data && res.data.Phrase, '绑定失败'), icon: 'none' });
         }
       },
       fail: (err) => {

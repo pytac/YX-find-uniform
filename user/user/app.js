@@ -210,6 +210,33 @@ App({
     return ''
   },
 
+  // 服务端返回的 Phrase 是给机器看的英文（如 "key not found"），
+  // 直接弹给用户没有意义。这里统一翻成人话，认不出的才退回兜底文案。
+  phraseText(phrase, fallback) {
+    const raw = typeof phrase === 'string' ? phrase.trim() : ''
+    const dict = {
+      'key not found': '这条记录已失效，请返回首页刷新',
+      'uid not found': '这个账号在该校没有记录，请返回首页刷新',
+      'key is not loss information': '这条消息不是丢失记录，无法领取',
+      'yid is not belong to key': 'YID 与这条丢失记录不一致',
+      'yid is not belong to uid': '这件校服不属于当前账号',
+      'yid not found': '未找到这件校服，请核对 YID',
+      'yid is not active': '这件校服还没绑定，无法报告丢失',
+      'yid is already active': '这件校服已被绑定',
+      'loss information cannot be deleted': '丢失通知不能删除，请先领取',
+      'school service unreachable': '学校服务器连不上，请稍后再试',
+      'school loss failed': '学校处理失败，请稍后再试',
+      'school enable failed': '学校登记失败，请稍后再试',
+      'forbidden': '没有权限执行该操作'
+    }
+    const hit = dict[raw.toLowerCase()]
+    if (hit) {
+      return hit
+    }
+    // 没收录的短语多半是丢进来的 HTML 或空串，给兜底文案比露出内部措辞更好
+    return fallback || '操作失败'
+  },
+
   addMessage(msg) {
     const timeId = msg.time_id || Date.now().toString()
     this.globalData.messages[timeId] = {

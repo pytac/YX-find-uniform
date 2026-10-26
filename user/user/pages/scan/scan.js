@@ -9,6 +9,8 @@ Page({
     keyboardUp: false,
     cameraOn: true,
     cameraError: '',
+    // 弹窗里填的 YID 和这条丢失记录不是同一件时置 true，用于提示
+    claimMismatch: false,
     // 领取丢失模式专用
     claimTimeId: '',
     claimYid: '',
@@ -45,6 +47,20 @@ Page({
   // 弹窗内直接修正识别结果
   onScanResultInput(e) {
     this.setData({ scanResult: e.detail.value });
+    this.syncClaimMismatch();
+  },
+
+  // 领取丢失时，弹窗里的 YID 和这条记录是否对得上
+  syncClaimMismatch() {
+    if (this.data.mode !== 'claimLoss') {
+      return;
+    }
+    const claimYid = this.data.claimYid || '';
+    const cur = (this.data.scanResult || '').trim();
+    const mismatch = !!(claimYid && cur && cur !== claimYid);
+    if (mismatch !== !!this.data.claimMismatch) {
+      this.setData({ claimMismatch: mismatch });
+    }
   },
 
   // 键盘弹起时把弹窗顶上去，避免输入框被遮住
@@ -91,6 +107,7 @@ Page({
       showModal: true,
       keyboardUp: false
     });
+    this.syncClaimMismatch();
   },
 
   // 备用入口：调起系统扫码（可选相册图片），相机不可用时仍可操作
@@ -176,6 +193,7 @@ Page({
       showModal: true,
       keyboardUp: false
     });
+    this.syncClaimMismatch();
   },
 
   onCancel() {
@@ -253,7 +271,10 @@ Page({
       this._claimKeys = keys;
       this._claimUid = uid;
       this._claimYid = scanResult;
-      this._claimError = '';
+      // 记录这次填的 YID 与丢失记录是否一致，失败时据此给出不同的说明
+      this._claimEdited = scanResult !== (this.data.claimYid || '');
+      this._claimPhrases = [];
+      this._claimTried = 0;
       wx.showLoading({ title: '提交中...' });
       this.postClaim(0, 0);
     } else {
@@ -285,7 +306,10 @@ Page({
             this.setData({ showModal: false, scanResult: '', yidValue: '', keyboardUp: false });
             wx.navigateBack();
           } else {
-            wx.showToast({ title: res.data.Phrase || '报告失败', icon: 'none' });
+            wx.showToast({
+              title: app.phraseText(res.data && res.data.Phrase, '报告失败'),
+              icon: 'none'
+            });
           }
         },
         fail: () => {
@@ -304,7 +328,7 @@ Page({
 
     if (ti >= targets.length) {
       wx.hideLoading();
-      wx.showToast({ title: this._claimError || '领取失败', icon: 'none' });
+      this.showClaimFailure();
       return;
     }
 
@@ -313,6 +337,8 @@ Page({
       this.postClaim(ti + 1, 0);
       return;
     }
+
+    this._claimTried = (this._claimTried || 0) + 1;
 
     wx.request({
       url: targets[ti] + '/user/get_loss',
@@ -326,18 +352,95 @@ Page({
         if (res.data && res.data.Status) {
           wx.hideLoading();
           wx.showToast({ title: '领取成功', icon: 'success' });
-          this.setData({ showModal: false, scanResult: '', yidValue: '', keyboardUp: false });
+          this.setData({ showModal: false, scanResult: '', yidValue: '', keyboardUp: false, claimMismatch: false });
           // 返回首页并刷新消息
           wx.navigateBack();
         } else {
-          this._claimError = (res.data && res.data.Phrase) || '领取失败';
+          const phrase = (res.data && res.data.Phrase) || '';
+          if (phrase) {
+            this._claimPhrases = this._claimPhrases || [];
+            if (this._claimPhrases.indexOf(phrase) === -1) {
+              this._claimPhrases.push(phrase);
+            }
+          } else {
+            this._claimBadResponse = true;
+          }
           this.postClaim(ti, ki + 1);
         }
       },
       fail: () => {
         // 这家学校联系不上，换下一家
+        this._claimUnreachable = true;
         this.postClaim(ti + 1, 0);
       }
+    });
+  },
+
+  // 领取失败时的说明：必须让用户看懂"是扫错了、还是记录废了、还是网络不通"，
+  // 不能把服务端的 "key not found" 原样弹出来。
+  showClaimFailure() {
+    const phrases = this._claimPhrases || [];
+    const claimYid = this.data.claimYid || '';
+    const typedYid = this._claimYid || '';
+    const has = (p) => phrases.indexOf(p) !== -1;
+
+    // 扫到/输入的 YID 和这条丢失记录不是同一件
+    if (has('yid is not belong to key')) {
+      const lines = ['扫到的校服和这条丢失记录对不上，无法领取。'];
+      if (claimYid) {
+        lines.push('');
+        lines.push('记录中的 YID：' + claimYid);
+      }
+      if (typedYid && typedYid !== claimYid) {
+        lines.push('你当前填的 YID：' + typedYid);
+      }
+      lines.push('');
+      lines.push('请重新扫描这件校服上的二维码；如果确认记录有误，请联系学校处理。');
+      wx.showModal({
+        title: '领取失败',
+        content: lines.join('\n'),
+        showCancel: false,
+        confirmText: '知道了'
+      });
+      return;
+    }
+
+    // 记录本身没了：已领取、已被删除或超过保留期
+    if (has('key not found') || has('key is not loss information')) {
+      wx.showModal({
+        title: '领取失败',
+        content: '这条丢失记录已经失效（可能已被领取，或已被学校删除）。\n请在首页下拉刷新消息后再看，列表里没有这条就说明已经处理完了。',
+        showCancel: false,
+        confirmText: '知道了'
+      });
+      return;
+    }
+
+    // 校服不属于当前账号
+    if (has('yid is not belong to uid')) {
+      wx.showModal({
+        title: '领取失败',
+        content: '这件校服不属于当前账号，无法领取。\n请用当初绑定这件校服的设备（或找学校核实绑定信息）。',
+        showCancel: false,
+        confirmText: '知道了'
+      });
+      return;
+    }
+
+    if (phrases.length === 0) {
+      // 一个响应都没拿到，基本都是网络/服务器问题
+      wx.showToast({
+        title: this._claimUnreachable ? '连不上学校服务器，请检查网络' : '领取失败，请稍后重试',
+        icon: 'none'
+      });
+      return;
+    }
+
+    wx.showModal({
+      title: '领取失败',
+      content: app.phraseText(phrases[0], '领取失败，请核对 YID 后重试') + '。\n请核对二维码或 YID 后再试。',
+      showCancel: false,
+      confirmText: '知道了'
     });
   }
 });

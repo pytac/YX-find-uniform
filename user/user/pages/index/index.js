@@ -195,7 +195,7 @@ Page({
                 wx.showToast({ title: '删除成功', icon: 'success' });
                 this.fetchMessagesFromServer();
               } else {
-                wx.showToast({ title: res2.data.Phrase || '删除失败', icon: 'none' });
+                wx.showToast({ title: app.phraseText(res2.data && res2.data.Phrase, '删除失败'), icon: 'none' });
               }
             },
             fail: () => {

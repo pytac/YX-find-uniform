@@ -65,6 +65,9 @@
                confirm-type="done" cursor-spacing="24"
                bindinput="onScanResultInput" bindfocus="onFieldFocus" bindblur="onFieldBlur" />
         <view class="modal-hint">识别有误可直接修改，确定后使用修改后的值</view>
+        <view class="modal-warn" wx:if="{{claimMismatch}}">
+          <text>与这条丢失记录的 YID 不一致（记录：{{claimYid}}）</text>
+        </view>
       </view>
       <view class="modal-footer">
         <button class="modal-btn cancel-btn" bindtap="onCancel">取消</button>

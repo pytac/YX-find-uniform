@@ -308,6 +308,18 @@
   line-height: 1.5;
 }
 
+/* YID 与丢失记录对不上时的提醒 */
+.modal-warn {
+  margin-top: 16rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 10rpx;
+  background: #FFF4E5;
+  font-size: 22rpx;
+  color: #E8890C;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
 .modal-footer {
   margin-top: 30rpx;
   display: flex;

@@ -155,7 +155,7 @@ Page({
   postLoss(targets, index, yid) {
     if (index >= targets.length) {
       wx.hideLoading();
-      wx.showToast({ title: this._lossError || '报告失败', icon: 'none' });
+      wx.showToast({ title: app.phraseText(this._lossError, '报告失败'), icon: 'none' });
       return;
     }
 
