@@ -6,7 +6,12 @@
 
   <view class="settings-card">
     <view class="form-group">
-      <view class="form-label">用户UID</view>
+      <view class="form-label-row">
+        <view class="form-label">用户UID</view>
+        <view class="copy-btn" wx:if="{{uid}}" bindtap="copyUid" hover-class="copy-btn-hover">
+          <text>复制</text>
+        </view>
+      </view>
       <view class="form-readonly">
         <text class="form-readonly-text" user-select="{{true}}">{{uid || '未生成'}}</text>
       </view>
@@ -18,11 +23,15 @@
       <view class="form-input-wrapper">
         <input class="form-input" type="text" placeholder="请输入服务器地址" value="{{serverUrl}}" bindinput="onUrlInput" />
       </view>
-      <view class="form-hint">默认值：http://127.0.0.1:5000</view>
+      <view class="form-hint">填写电脑的局域网地址，如 http://192.168.2.128:5000（不要用 127.0.0.1）</view>
     </view>
 
     <button class="save-btn" bindtap="saveSettings">
       <text>保存设置</text>
+    </button>
+
+    <button class="test-btn" bindtap="testConnection">
+      <text>测试连接</text>
     </button>
   </view>
 

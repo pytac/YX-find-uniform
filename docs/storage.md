@@ -215,3 +215,19 @@ information = {
 ```
 
 </details>
+
+# 一个用户多套校服
+
+`uniform_search` / `uniform` 都是 **YID → 记录** 的键，归属用户记在 `detail.uid` 里，
+所以同一个 `uid` 天然可以拥有多件衣物（多个 YID），也可以分属不同学校。
+
+相关约定：
+
+- 反查某用户的全部衣物：遍历 `uniform_search`，取 `is_active == True` 且 `detail.uid == uid`
+  （总服务器对应接口 `POST /user/uniforms`）
+- 客户端拉消息必须遍历该用户涉及的**所有**学校 `/user/get_msg` 再合并；
+  只问第一个学校会漏掉其它学校的丢失 / 领取通知
+- 删除消息、领取丢失都必须按 `yid` 归到它自己那所学校，不能笼统用"第一个学校地址"
+- `information[uid]` 的消息 key 是**秒级**时间戳，同一秒可能出现多条（多套校服同时丢失），
+  写入时若 key 已存在则顺延 `+1`，不允许覆盖已存在的消息
+

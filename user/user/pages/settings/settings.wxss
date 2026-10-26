@@ -77,6 +77,33 @@
   word-break: break-all;
 }
 
+/* 标题行：左边「用户UID」，右边「复制」按钮 */
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.form-label-row .form-label {
+  margin-bottom: 0;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 8rpx 24rpx;
+  border-radius: 8rpx;
+  background: #E8F5E9;
+  color: #4CAF50;
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.copy-btn-hover {
+  background: #C8E6C9;
+}
+
 .form-hint {
   font-size: 22rpx;
   color: #999;
@@ -101,6 +128,27 @@
 
 .save-btn:active {
   background: #388E3C;
+}
+
+.test-btn {
+  width: 100%;
+  margin-top: 20rpx;
+  background: #fff;
+  color: #4CAF50;
+  font-size: 28rpx;
+  font-weight: 500;
+  padding: 22rpx 0;
+  border-radius: 50rpx;
+  border: 2rpx solid #4CAF50;
+  box-sizing: border-box;
+}
+
+.test-btn::after {
+  border: none;
+}
+
+.test-btn:active {
+  background: #E8F5E9;
 }
 
 .settings-info {

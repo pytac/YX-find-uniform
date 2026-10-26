@@ -4,15 +4,32 @@
     <view class="scan-subtitle">扫描或输入校服上的YID进行添加</view>
   </view>
 
-  <!-- 扫码区域 -->
+  <!-- 扫码区域：相机实时取景，识别成功自动弹出确认 -->
   <view class="camera-area">
     <view class="camera-box">
+      <camera
+        wx:if="{{cameraOn && !showModal}}"
+        class="camera"
+        mode="scanCode"
+        device-position="back"
+        flash="off"
+        bindscancode="onCameraScan"
+        binderror="onCameraError"
+        bindrendererror="onRenderError"
+      />
+      <view class="camera-fallback" wx:else>
+        <text class="camera-fallback-text">{{cameraError || '相机已暂停'}}</text>
+      </view>
+
       <view class="scan-frame">
         <view class="scan-line"></view>
       </view>
     </view>
-    <button class="scan-camera-btn" bindtap="onScan">
-      <text>开始扫码</text>
+
+    <view class="scan-tip">{{cameraError ? '相机不可用，请用系统扫码或手动输入' : '将二维码放入框内，自动识别'}}</view>
+
+    <button class="scan-camera-btn ghost" bindtap="onScan">
+      <text>用系统扫码</text>
     </button>
   </view>
 
@@ -38,12 +55,16 @@
     </button>
   </view>
 
-  <view class="modal-overlay" wx:if="{{showModal}}">
+  <view class="modal-overlay {{keyboardUp ? 'keyboard-up' : ''}}" wx:if="{{showModal}}">
     <view class="modal-content">
       <view class="modal-header">确认信息</view>
       <view class="modal-body">
-        <view class="modal-label">YID：</view>
-        <view class="modal-value">{{scanResult}}</view>
+        <view class="modal-label">YID</view>
+        <input class="modal-input" type="text" value="{{scanResult}}"
+               placeholder="请输入YID" placeholder-class="modal-placeholder"
+               confirm-type="done" cursor-spacing="24"
+               bindinput="onScanResultInput" bindfocus="onFieldFocus" bindblur="onFieldBlur" />
+        <view class="modal-hint">识别有误可直接修改，确定后使用修改后的值</view>
       </view>
       <view class="modal-footer">
         <button class="modal-btn cancel-btn" bindtap="onCancel">取消</button>

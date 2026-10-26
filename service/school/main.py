@@ -138,17 +138,19 @@ def send_information(uid, type, time_val, auto_delete=True, detail={}):
     但在调用时请确保传入的是时间戳数值。
     """
     global information
-    
-    # 确保 uid 存在，且值为字典
-    if uid not in information:
-        information[uid] = {}
-    
-    # json 只能接受 str 为键
-    # 使用 str 类型的时间戳作为 Key
-    msg_key = str(time_val)
-    
+
     with data_lock:
-        # 直接存入字典
+        # 确保 uid 存在，且值为字典
+        if uid not in information:
+            information[uid] = {}
+
+        # json 只能接受 str 为键，使用 str 类型的时间戳作为 Key。
+        # 同一个用户可能有多套校服，同一秒内可能连发多条通知（比如两件都丢了），
+        # 直接覆盖会让先到的那条凭空消失，冲突时顺延到下一个可用序号。
+        msg_key = str(time_val)
+        while msg_key in information[uid]:
+            msg_key = str(int(msg_key) + 1)
+
         information[uid][msg_key] = {
             "type": type,
             "time": time_val,      # 原始时间保留在 value 中

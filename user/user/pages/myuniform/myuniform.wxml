@@ -5,6 +5,9 @@
   </view>
 
   <view class="uniform-list" wx:if="{{uniformList.length > 0}}">
+    <view class="list-tip" wx:if="{{uniformList.length > 1}}">
+      已绑定 {{uniformList.length}} 套校服
+    </view>
     <view class="uniform-item" wx:for="{{uniformList}}" wx:key="yid">
       <view class="uniform-icon">
         <image src="/images/icon_my_uniform.png" mode="aspectFit" />
@@ -12,7 +15,8 @@
       <view class="uniform-info">
         <view class="uniform-yid">YID：{{item.yid}}</view>
         <view class="uniform-student">学号：{{item.student}}</view>
-        <view class="uniform-time">绑定时间：{{item.time}}</view>
+        <view class="uniform-school">学校：{{item.schoolLabel}}</view>
+        <view class="uniform-time">绑定时间：{{item.timeLabel}}</view>
       </view>
     </view>
   </view>

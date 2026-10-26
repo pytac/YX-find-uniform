@@ -19,93 +19,124 @@ Page({
     this.fetchMessagesFromServer();
   },
 
-  // 获取已激活校服中保存的学校服务器地址
+  // 获取已激活校服中保存的学校服务器地址（兼容旧逻辑，返回第一个）
   getSchoolServiceUrl() {
-    const uniforms = wx.getStorageSync('uniforms') || [];
-    for (const u of uniforms) {
-      if (u.schoolService) {
-        return u.schoolService;
-      }
-    }
-    return '';
+    const urls = app.collectSchoolUrls();
+    return urls.length > 0 ? urls[0] : '';
+  },
+
+  // 清空消息缓存
+  clearMessages() {
+    app.globalData.messages = {};
+    wx.setStorageSync('messages', {});
+    this.setData({ messageList: [], unreadCount: 0 });
   },
 
   fetchMessagesFromServer() {
     const uid = app.globalData.uid;
     if (!uid) {
-      this.setData({ messageList: [], unreadCount: 0 });
+      this.clearMessages();
       return;
     }
 
     // 如果没有绑定校服，不发送 get_msg 请求
     const uniforms = wx.getStorageSync('uniforms') || [];
     if (uniforms.length === 0) {
-      app.globalData.messages = {};
-      wx.setStorageSync('messages', {});
-      this.setData({ messageList: [], unreadCount: 0 });
+      this.clearMessages();
       return;
     }
 
-    // 优先使用学校服务器地址获取消息
-    let msgUrl = app.globalData.serverUrl;
-    const schoolUrl = this.getSchoolServiceUrl();
-    if (schoolUrl) {
-      msgUrl = schoolUrl;
+    // 一个账号可能有多套校服，且可能分属不同学校：
+    // 必须把所有学校都问一遍再合并，只问第一个会漏掉其它学校的通知。
+    const schools = app.collectSchoolUrls();
+    if (schools.length === 0) {
+      this.clearMessages();
+      return;
     }
 
-    wx.request({
-      url: msgUrl + '/user/get_msg',
-      method: 'POST',
-      data: { uid },
-      success: (res) => {
-        if (res.data && res.data.Status) {
-          const serverMsgs = res.data.Detail.msg || {};
-          app.globalData.messages = {};
-          wx.setStorageSync('messages', {});
+    const buckets = schools.map(() => null);
+    let arrived = 0;
+    // 请求序号：连点刷新时只认最后一次的结果，避免旧结果覆盖新结果
+    const seq = (this._msgSeq || 0) + 1;
+    this._msgSeq = seq;
 
-          Object.keys(serverMsgs).forEach(timeId => {
-            const msg = serverMsgs[timeId];
-            const timeStr = this.timestampToStr(msg.time);
-            app.addMessage({
-              time_id: timeId,
-              type: msg.type,
-              time: timeStr,
-              timestamp: msg.time, // 保留原始时间戳用于排序
-              auto_delete: msg.auto_delete || false,
-              detail: msg.detail || {}
-            });
-          });
-          const messages = app.getMessages();
-          const list = Object.keys(messages).map(timeId => ({
-            timeId,
-            ...messages[timeId]
-          }));
-          // 按时间戳降序排列：越晚的消息越在上面
-          list.sort((a, b) => {
-            const tsA = a.timestamp || 0;
-            const tsB = b.timestamp || 0;
-            return tsB - tsA;
-          });
-          this.setData({ 
-            messageList: list,
-            unreadCount: list.length
-          });
-        } else {
-          app.globalData.messages = {};
-          wx.setStorageSync('messages', {});
-          this.setData({ messageList: [], unreadCount: 0 });
-        }
-      },
-      fail: () => {
-        console.log('获取消息失败，显示空列表');
-        wx.showToast({
-          title: '未连接到服务器',
-          icon: 'none'
-        });
-        app.globalData.messages = {};
-        wx.setStorageSync('messages', {});
-        this.setData({ messageList: [], unreadCount: 0 });
+    const merge = () => {
+      if (this._msgSeq !== seq) {
+        return;
       }
+      app.globalData.messages = {};
+      wx.setStorageSync('messages', {});
+      schools.forEach((url, i) => {
+        const bucket = buckets[i];
+        if (!bucket || !bucket.msgs) {
+          return;
+        }
+        Object.keys(bucket.msgs).forEach((rawKey) => {
+          const msg = bucket.msgs[rawKey];
+          if (!msg) {
+            return;
+          }
+          const timeStr = this.timestampToStr(msg.time);
+          app.addMessage({
+            // 不同学校在同一秒也可能产生相同 key，加来源前缀防止互相覆盖
+            time_id: url + '#' + rawKey,
+            type: msg.type,
+            time: timeStr,
+            timestamp: msg.time,
+            auto_delete: msg.auto_delete || false,
+            detail: msg.detail || {},
+            source: url,
+            rawKey: rawKey
+          });
+        });
+      });
+
+      const messages = app.getMessages();
+      const list = Object.keys(messages).map((timeId) => ({
+        timeId,
+        ...messages[timeId]
+      }));
+      // 按时间戳降序排列：越晚的消息越在上面
+      list.sort((a, b) => {
+        const tsA = a.timestamp || 0;
+        const tsB = b.timestamp || 0;
+        return tsB - tsA;
+      });
+      this.setData({
+        messageList: list,
+        unreadCount: list.length
+      });
+    };
+
+    schools.forEach((schoolUrl, index) => {
+      wx.request({
+        url: schoolUrl + '/user/get_msg',
+        method: 'POST',
+        data: { uid },
+        success: (res) => {
+          if (res.data && res.data.Status) {
+            buckets[index] = {
+              url: schoolUrl,
+              msgs: (res.data.Detail && res.data.Detail.msg) || {}
+            };
+          }
+        },
+        fail: (err) => {
+          console.error('[get_msg] 请求失败', schoolUrl, err && err.errMsg);
+        },
+        complete: () => {
+          arrived += 1;
+          if (arrived < schools.length) {
+            return;
+          }
+          merge();
+          // 所有学校都不可达时才提示，只要有一家通了就正常展示
+          const onlineCount = buckets.filter((b) => b).length;
+          if (onlineCount === 0) {
+            wx.showToast({ title: '未连接到服务器', icon: 'none' });
+          }
+        }
+      });
     });
   },
 
@@ -127,10 +158,27 @@ Page({
       return;
     }
 
-    let msgUrl = app.globalData.serverUrl;
-    const schoolUrl = this.getSchoolServiceUrl();
-    if (schoolUrl) {
-      msgUrl = schoolUrl;
+    // 多校服时消息可能来自不同学校，必须回到它自己那台学校服务器上删，
+    // 否则会去错的学校删、删不掉又看不出原因
+    const msg = (this.data.messageList || []).find((m) => m.timeId === timeId) || {};
+    const source = msg.source || app.findSchoolByYid((msg.detail && msg.detail.yid) || '') || '';
+    const rawKey = msg.rawKey || timeId;
+
+    const removeLocal = () => {
+      const local = wx.getStorageSync('messages') || {};
+      if (local[timeId]) {
+        delete local[timeId];
+        app.globalData.messages = local;
+        wx.setStorageSync('messages', local);
+      }
+      this.setData({ messageList: (this.data.messageList || []).filter((m) => m.timeId !== timeId) });
+    };
+
+    // 本地自己插的通知（没有来源学校）直接删本地
+    if (!source) {
+      removeLocal();
+      wx.showToast({ title: '已删除', icon: 'success' });
+      return;
     }
 
     wx.showModal({
@@ -139,16 +187,15 @@ Page({
       success: (res) => {
         if (res.confirm) {
           wx.request({
-            url: msgUrl + '/user/del_msg',
+            url: source + '/user/del_msg',
             method: 'POST',
-            data: { uid, key: timeId },
-            success: (res) => {
-              if (res.data && res.data.Status) {
+            data: { uid, key: rawKey },
+            success: (res2) => {
+              if (res2.data && res2.data.Status) {
                 wx.showToast({ title: '删除成功', icon: 'success' });
-                // 重新获取消息
                 this.fetchMessagesFromServer();
               } else {
-                wx.showToast({ title: res.data.Phrase || '删除失败', icon: 'none' });
+                wx.showToast({ title: res2.data.Phrase || '删除失败', icon: 'none' });
               }
             },
             fail: () => {
@@ -170,9 +217,13 @@ Page({
       return;
     }
 
+    const msg = (this.data.messageList || []).find((m) => m.timeId === timeId) || {};
+    // 把消息来源学校一起带过去，领取时才能问对学校
+    const source = encodeURIComponent(msg.source || app.findSchoolByYid(yid) || '');
+
     // 跳转到扫码/输入页面，传入参数
     wx.navigateTo({
-      url: `/pages/scan/scan?mode=claimLoss&timeId=${timeId}&yid=${yid}`
+      url: `/pages/scan/scan?mode=claimLoss&timeId=${encodeURIComponent(timeId)}&yid=${encodeURIComponent(yid)}&source=${source}&key=${encodeURIComponent(msg.rawKey || timeId)}`
     });
   },
 

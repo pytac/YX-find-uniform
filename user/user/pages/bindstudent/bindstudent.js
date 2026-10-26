@@ -24,7 +24,9 @@ Page({
     }
 
     const uid = app.globalData.uid;
-    const serverUrl = app.globalData.serverUrl;
+    // 统一走 normalizeServerUrl：缺 http:// 也能修好，否则请求发不出去
+    const serverUrl = app.normalizeServerUrl(app.globalData.serverUrl);
+    const targetUrl = serverUrl + '/user/enable';
 
     if (!uid) {
       wx.showToast({ title: '用户标识异常，请重启小程序', icon: 'none' });
@@ -34,8 +36,9 @@ Page({
     wx.showLoading({ title: '提交中...' });
 
     wx.request({
-      url: serverUrl + '/user/enable',
+      url: targetUrl,
       method: 'POST',
+      timeout: 8000,
       data: {
         yid: yid,
         uid: uid,
@@ -64,9 +67,23 @@ Page({
           wx.showToast({ title: res.data.Phrase || '绑定失败', icon: 'none' });
         }
       },
-      fail: () => {
+      fail: (err) => {
         wx.hideLoading();
-        wx.showToast({ title: '网络错误，请检查服务器', icon: 'none' });
+        const errMsg = (err && err.errMsg) || '未知错误';
+        console.error('[enable] 请求失败', targetUrl, errMsg);
+        // 把实际请求地址和微信给的错误原因直接显示出来，避免只看到一句"网络错误"
+        let hint = '';
+        if (errMsg.indexOf('domain list') >= 0) {
+          hint = '\n\n域名校验未通过：请在开发者工具「详情 → 本地设置」勾选"不校验合法域名"，真机需打开调试模式。';
+        } else if (errMsg.indexOf('timeout') >= 0) {
+          hint = '\n\n连接超时：手机和电脑要在同一个 Wi-Fi 下，且电脑防火墙需放行该端口。';
+        }
+        wx.showModal({
+          title: '连接服务器失败',
+          content: `请求地址：${targetUrl}\n错误：${errMsg}${hint}`,
+          showCancel: false,
+          confirmText: '知道了'
+        });
       }
     });
   },
@@ -79,7 +96,8 @@ Page({
       // 记录学校名称和学校服务器地址
       if (detail) {
         uniform.schoolName = detail.name || '';
-        uniform.schoolService = detail.school_service || '';
+        // 服务端可能返回 127.0.0.1（初始化模板遗留），存之前先纠成局域网地址
+        uniform.schoolService = app.resolveUrl(detail.school_service || '');
       }
       uniforms.push(uniform);
       wx.setStorageSync('uniforms', uniforms);

@@ -87,6 +87,14 @@ def send_msg_to_school(sid,path,msg):
     
     return requests.post(url,json=msg)
 
+# 辅助函数：安全读取学校返回的 JSON
+# 学校端返回 HTML 错误页或空响应时，直接 .json() 会抛异常让本接口 500
+def _safe_json(resp):
+    try:
+        return resp.json()
+    except ValueError:
+        return {"raw": (resp.text or "")[:200]}
+
 # 辅助函数：统一响应格式
 def _make_response(phrase, status, detail=None):
     if detail is None:
@@ -245,7 +253,12 @@ def enable_uniform():
             return _make_response("yid not found", False, {}), 404
         # 判断是否已被激活
         if (storage["uniform_search"][payload_data["yid"]]["is_active"]):
-            return _make_response("yid is already active", False, {}), 423
+            # 一个人可以有多套校服，重复扫到自己已绑的那件时给个明白的提示，
+            # 而不是让客户端弹出英文的 "yid is already active"
+            owner = (storage["uniform_search"][payload_data["yid"]]["detail"] or {}).get("uid")
+            if (owner == payload_data["uid"]):
+                return _make_response("该校服已绑定在当前账号下，无需重复添加", False, {}), 423
+            return _make_response("该校服已被其他账号绑定", False, {}), 423
         
         sid = storage["uniform_search"][payload_data["yid"]]["sid"]
     
@@ -256,10 +269,10 @@ def enable_uniform():
         "uid": payload_data["uid"],
         "student": payload_data["student"]
     })
-    print(response.json())
+    print(_safe_json(response))
     if (response.status_code != 200):
         # 将学校返回的错误信息放入 Detail
-        error_detail = response.json() if response.json() else {}
+        error_detail = _safe_json(response)
         return _make_response("school enable failed", False, error_detail), response.status_code
 
     # 修改本地存储（加锁）
@@ -280,6 +293,43 @@ def enable_uniform():
     
     # 返回结果，附带 school_service 信息
     return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"],"name": storage["school_register_search"][sid]["name"]}), 200
+
+@app.route("/user/uniforms", methods=['POST'])
+def user_uniforms():
+    '''
+    payload:
+    {
+        "uid": 用户id
+    }
+
+    一个 uid 名下可以有多套校服，也可能分属不同学校。
+    客户端靠这个接口在换手机 / 清缓存后把校服列表找回来。
+    '''
+    payload_data = flask.request.json or {}
+    uid = payload_data.get("uid")
+    if (not uid or not isinstance(uid, str)):
+        return _make_response("uid is required", False, {}), 400
+
+    items = []
+    with storage_lock:
+        for yid, info in storage["uniform_search"].items():
+            if (not info.get("is_active")):
+                continue
+            detail = info.get("detail") or {}
+            if (detail.get("uid") != uid):
+                continue
+            sid = info.get("sid")
+            school = storage["school_register_search"].get(sid, {})
+            items.append({
+                "yid": yid,
+                "student": detail.get("student", ""),
+                "sid": sid,
+                "school_name": school.get("name", ""),
+                "school_service": school.get("school_service", ""),
+            })
+
+    items.sort(key=lambda x: x["yid"])
+    return _make_response("get uniforms success", True, {"uniforms": items}), 200
 
 @app.route("/user/loss", methods=['POST'])
 def loss():
@@ -305,14 +355,33 @@ def loss():
         sid = storage["uniform_search"][payload_data["yid"]]["sid"]
     
     # 反馈给学校（锁外发送请求）
-    response = send_msg_to_school(sid, "/service/loss",{
-        "yid": payload_data["yid"],
-    })
-    print(response.json())
+    try:
+        response = send_msg_to_school(sid, "/service/loss",{
+            "yid": payload_data["yid"],
+        })
+    except requests.exceptions.RequestException as e:
+        # 学校服务器没开或地址不通，明确告诉客户端，避免只看到一个 500
+        print(f"[loss] school service unreachable: {e}")
+        return _make_response("school service unreachable", False, {"sid": sid, "error": str(e)}), 502
+
+    print(_safe_json(response))
     if (response.status_code != 200):
         # 将学校返回的错误信息放入 Detail
-        error_detail = response.json() if response.json() else {}
+        error_detail = _safe_json(response)
         return _make_response("school loss failed", False, error_detail), response.status_code
+
+    # 记录这一次上报，便于在总服务器端核对（退出时随 storage 一起落盘）
+    with storage_lock:
+        records = storage.setdefault("loss_records", {})
+        record_id = str(int(time() * 1000))
+        while record_id in records:
+            record_id = str(int(record_id) + 1)
+        records[record_id] = {
+            "yid": payload_data["yid"],
+            "sid": sid
+        }
+        total = len(records)
+    print(f"[loss] recorded yid={payload_data['yid']} sid={sid} total={total}")
 
     return _make_response("lossing report successfully", True, {"sid": sid}), 200
 

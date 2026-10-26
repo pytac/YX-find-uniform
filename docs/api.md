@@ -24,6 +24,7 @@
     - [学校删除衣物 - /school/delete](#学校删除衣物)
   - [user（总服务器）](#user总服务器)
     - [用户激活衣物 - /user/enable](#用户激活衣物)
+    - [查询用户名下校服 - /user/uniforms](#查询用户名下校服)
     - [上报衣物丢失 - /user/loss](#上报衣物丢失)
 - [学校端（School Server）](#学校端school-server)
   - [service](#service)
@@ -186,8 +187,49 @@
 **错误响应**
 - 缺少必填字段：400
 - `yid` 不存在：404 `{"Phrase":"yid not found", "Status":false}`
-- 衣物已激活：423 `{"Phrase":"yid is already active", "Status":false}`
+- 衣物已激活：423
+  - 绑在自己账号下：`{"Phrase":"该校服已绑定在当前账号下，无需重复添加", "Status":false}`
+  - 被其他账号占用：`{"Phrase":"该校服已被其他账号绑定", "Status":false}`
 - 通知学校失败：状态码随学校返回，`Detail` 中包含学校返回的错误信息
+
+> 一个 `uid` 可以激活多件衣物，也可以跨学校（每件衣物独立记录、独立归属），
+> 因此重复激活时按归属区分提示，不作为异常处理。
+
+---
+
+### 查询用户名下校服
+**`POST /user/uniforms`**
+
+按 `uid` 反查该用户名下所有**已激活**的衣物。用于一个账号多套校服、以及换手机或清缓存后恢复列表。
+
+**请求体 (JSON)**
+| 字段  | 类型   | 必填 | 说明   |
+|-------|--------|------|--------|
+| `uid` | string | 是   | 用户ID |
+
+**成功响应**
+```json
+{
+  "Phrase": "get uniforms success",
+  "Status": true,
+  "Detail": {
+    "uniforms": [
+      {
+        "yid": "550e8400-e29b-41d4-a716-446655440000",
+        "student": "20240101",
+        "sid": "学校ID",
+        "school_name": "某某学校",
+        "school_service": "http://school.example.com"
+      }
+    ]
+  }
+}
+```
+
+按 `yid` 升序返回；没有校服时为 `{"uniforms": []}`。
+
+**错误响应**
+- 缺少 `uid`：400
 
 ---
 

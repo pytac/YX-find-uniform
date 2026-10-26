@@ -58,14 +58,28 @@
   flex: 1;
 }
 
+.list-tip {
+  font-size: 24rpx;
+  color: #888;
+  padding: 8rpx 8rpx 16rpx;
+}
+
 .uniform-yid {
   font-size: 28rpx;
   font-weight: 600;
   color: #333;
   margin-bottom: 8rpx;
+  /* YID 是 36 位 UUID，必须允许任意位置换行 */
+  word-break: break-all;
 }
 
 .uniform-student {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 4rpx;
+}
+
+.uniform-school {
   font-size: 24rpx;
   color: #666;
   margin-bottom: 4rpx;
