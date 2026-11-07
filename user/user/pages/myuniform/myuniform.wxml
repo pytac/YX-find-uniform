@@ -8,7 +8,12 @@
     <view class="list-tip" wx:if="{{uniformList.length > 1}}">
       已绑定 {{uniformList.length}} 套校服
     </view>
-    <view class="uniform-item" wx:for="{{uniformList}}" wx:key="yid">
+    <view class="list-tip warn" wx:if="{{pendingCount > 0}}">
+      有 {{pendingCount}} 件校服已被学校删除，可点右侧「移除」清理
+    </view>
+
+    <view class="uniform-item {{(item.deletedBySchool || item.missingOnServer) ? 'is-deleted' : ''}}"
+          wx:for="{{uniformList}}" wx:key="yid">
       <view class="uniform-icon">
         <image src="/images/icon_my_uniform.png" mode="aspectFit" />
       </view>
@@ -17,6 +22,22 @@
         <view class="uniform-student">学号：{{item.student}}</view>
         <view class="uniform-school">学校：{{item.schoolLabel}}</view>
         <view class="uniform-time">绑定时间：{{item.timeLabel}}</view>
+
+        <view class="uniform-status" wx:if="{{item.deletedBySchool}}">
+          <text class="status-tag deleted">学校已删除</text>
+          <text class="status-time" wx:if="{{item.noticeTime}}">{{item.noticeTime}}</text>
+        </view>
+        <view class="uniform-status" wx:elif="{{item.missingOnServer}}">
+          <text class="status-tag missing">服务器上已无此校服</text>
+        </view>
+      </view>
+
+      <view class="uniform-remove"
+            wx:if="{{item.deletedBySchool || item.missingOnServer}}"
+            data-yid="{{item.yid}}"
+            bindtap="onDeleteUniform"
+            hover-class="uniform-remove-hover">
+        <text>移除</text>
       </view>
     </view>
   </view>

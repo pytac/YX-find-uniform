@@ -237,6 +237,38 @@ App({
     return fallback || '操作失败'
   },
 
+  // 学校删除校服后，「我的校服」需要一个移除入口。
+  // 判断依据优先是首页那条 type=4 删除通知，但通知可能被用户先删掉，
+  // 所以把 YID 另存一份在本机，保证入口不会凭空消失。
+  markDeletedYids(yids) {
+    const list = wx.getStorageSync('pendingDeleteYids') || []
+    let changed = false
+    ;(yids || []).forEach((yid) => {
+      if (yid && list.indexOf(yid) === -1) {
+        list.push(yid)
+        changed = true
+      }
+    })
+    if (changed) {
+      wx.setStorageSync('pendingDeleteYids', list)
+    }
+    return list
+  },
+
+  getDeletedYids() {
+    return wx.getStorageSync('pendingDeleteYids') || []
+  },
+
+  unmarkDeletedYid(yid) {
+    const list = wx.getStorageSync('pendingDeleteYids') || []
+    if (list.indexOf(yid) === -1) {
+      return list
+    }
+    const rest = list.filter((y) => y !== yid)
+    wx.setStorageSync('pendingDeleteYids', rest)
+    return rest
+  },
+
   addMessage(msg) {
     const timeId = msg.time_id || Date.now().toString()
     this.globalData.messages[timeId] = {

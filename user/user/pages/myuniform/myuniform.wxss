@@ -56,6 +56,7 @@
 
 .uniform-info {
   flex: 1;
+  min-width: 0;
 }
 
 .list-tip {
@@ -63,6 +64,70 @@
   color: #888;
   padding: 8rpx 8rpx 16rpx;
 }
+
+/* 有校服被学校删除时的提醒 */
+.list-tip.warn {
+  color: #E8890C;
+  padding: 0 8rpx 16rpx;
+}
+
+/* 已被学校删除 / 服务器上查不到：整条淡化，避免误以为是还能用的校服 */
+.uniform-item.is-deleted {
+  background: #FAFAFA;
+  border: 2rpx dashed #E0E0E0;
+  box-shadow: none;
+}
+
+.uniform-item.is-deleted .uniform-yid {
+  color: #888;
+}
+
+.uniform-status {
+  margin-top: 8rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-tag {
+  font-size: 20rpx;
+  line-height: 1.6;
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+  margin-right: 12rpx;
+}
+
+.status-tag.deleted {
+  color: #E53935;
+  background: #FFEBEE;
+}
+
+.status-tag.missing {
+  color: #E8890C;
+  background: #FFF4E5;
+}
+
+.status-time {
+  font-size: 20rpx;
+  color: #AAA;
+}
+
+/* 移除按钮 */
+.uniform-remove {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 32rpx;
+  border: 2rpx solid #E53935;
+  color: #E53935;
+  font-size: 24rpx;
+  line-height: 1.3;
+}
+
+.uniform-remove-hover {
+  background: #FFEBEE;
+}
+
 
 .uniform-yid {
   font-size: 28rpx;

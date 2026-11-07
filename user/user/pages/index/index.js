@@ -66,6 +66,9 @@ Page({
       }
       app.globalData.messages = {};
       wx.setStorageSync('messages', {});
+      // 收到删除通知就把 YID 记下来，「我的校服」据此给出移除入口；
+      // 即使用户把这条通知删了，入口也不会跟着消失
+      const deletedYids = [];
       schools.forEach((url, i) => {
         const bucket = buckets[i];
         if (!bucket || !bucket.msgs) {
@@ -77,6 +80,9 @@ Page({
             return;
           }
           const timeStr = this.timestampToStr(msg.time);
+          if (Number(msg.type) === 4 && msg.detail && msg.detail.yid) {
+            deletedYids.push(msg.detail.yid);
+          }
           app.addMessage({
             // 不同学校在同一秒也可能产生相同 key，加来源前缀防止互相覆盖
             time_id: url + '#' + rawKey,
@@ -90,6 +96,10 @@ Page({
           });
         });
       });
+
+      if (deletedYids.length > 0) {
+        app.markDeletedYids(deletedYids);
+      }
 
       const messages = app.getMessages();
       const list = Object.keys(messages).map((timeId) => ({
