@@ -140,6 +140,7 @@ def make_qr(yid, folder):
 
 
 def main():
+    global SERVER_URL
     print("=== 批量获取YID & 生成二维码 ===")
     SERVER_URL = ask("请输入总服务器地址: ")
     print(f"总服务器: {SERVER_URL}")
