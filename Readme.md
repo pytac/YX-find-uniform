@@ -15,13 +15,46 @@
 - - agent: 供 AI Agent 查看校服消息的 skill 文档
 
 
-<a id="other"></a>
+<a id="install"></a>
 
-## 其他
+## 运行环境与依赖
 
-- [存储格式](docs/storage.md)
-- [接口文档](docs/api.md)
-- [Agent Skill：查看校服消息](user/agent/SKILL.md)
+后端与制造商工具都是 Python 程序，要求 **Python 3.9 及以上**。依赖声明集中在仓库根目录，两种方式任选：
+
+```
+pip install -r requirements.txt   # 通用方式
+uv sync                           # uv 复现（推荐）
+```
+
+| 程序 | 入口 | 依赖 | 默认监听 |
+|---|---|---|---|
+| 总服务器 | `service/service/main.py` | flask、requests | `0.0.0.0:5000` |
+| 学校服务器 | `service/school/main.py` | flask、requests | `0.0.0.0:8888` |
+| 制造商工具 | `user/maker/main.py` | flask、requests、qrcode[pil] | 命令行，无端口 |
+
+启动方式：
+
+```bash
+uv sync                                   # 第一次：按 uv.lock 建 .venv 并装依赖
+uv run python service/service/main.py     # 之后每次这样启动
+uv run python service/school/main.py
+uv run python user/maker/main.py
+```
+
+也可以激活虚拟环境后直接用解释器运行（等价）：
+
+```bash
+.venv\Scripts\activate                    # Windows
+source .venv/bin/activate                 # Linux/macOS
+
+python service/service/main.py
+
+deactivate                                # 退出环境
+```
+
+已在 `Python 3.11` + `Flask 3.1.3` + `requests 2.34.2` + `qrcode 8.2` 环境下实测通过。
+
+> `uv.lock` 是清华镜像源解析的，国内安装更快。若需改用官方源，执行 `uv lock --no-config` 重新解析即可。
 
 ## Agent 支持（查看校服消息）
 
@@ -46,6 +79,14 @@
 > 必须由用户在小程序里扫码完成**，Agent 负责指路并事后核对结果。
 
 > 注意：`uid` 由手机本地生成，Agent 无法自行推算，必须由用户提供。
+
+<a id="other"></a>
+
+## 其他
+
+- [存储格式](docs/storage.md)
+- [接口文档](docs/api.md)
+- [Agent Skill：查看校服消息](user/agent/SKILL.md)
 
 ## 协议
 

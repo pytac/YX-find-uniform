@@ -1,0 +1,21 @@
+[project]
+name = "yx-find-uniform"
+version = "0.1.0"
+description = "衣寻 · 校园校服寻找系统（总服务器 / 学校服务器 / 制造商工具）"
+readme = "Readme.md"
+requires-python = ">=3.9"
+license = { text = "PolyForm-Noncommercial-1.0.0" }
+
+# 服务端（service/service 与 service/school）
+dependencies = [
+    "flask>=3.0",
+    "requests>=2.31",
+    # 制造商工具 user/maker 生成二维码用。
+    # 放在主依赖里是为了让 uv sync 一次装全，三个程序都能直接跑；
+    # 纯服务端部署可用 pip 时略过这一行，省下 Pillow。
+    "qrcode[pil]>=8.0,<9",
+]
+
+[tool.uv]
+# 本项目是应用而非可安装包，不需要 build backend
+package = false

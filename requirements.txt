@@ -1,0 +1,19 @@
+# 衣寻 YX-find-uniform · Python 依赖清单
+# 要求：Python >= 3.9
+#
+# 两种安装方式，任选其一：
+#   pip install -r requirements.txt   # 通用，取满足条件的最新版本
+#   uv sync                           # 按 pyproject.toml + uv.lock 精确复现（推荐）
+#
+# 对应关系：
+#   service/service/main.py   总服务器，Flask，默认 0.0.0.0:5000  —— 需要 flask、requests
+#   service/school/main.py    学校服务器，Flask，默认 0.0.0.0:8888 —— 需要 flask、requests
+#   user/maker/main.py        制造商工具，命令行生成 YID 二维码   —— 额外需要 qrcode
+
+# ---------- 服务端（两台服务器共用） ----------
+flask>=3.0,<4
+requests>=2.31,<3
+
+# ---------- 制造商工具（仅 user/maker 需要，纯服务端部署可删掉下面两行） ----------
+# [pil] 会一并安装 Pillow，用于把二维码保存成 PNG
+qrcode[pil]>=8.0,<9
