@@ -20,10 +20,131 @@ def start_init_prompt():
         agree_debug = True
         print("debug mode")
 
+# 终端里手敲地址的容错：补协议、去尾部斜杠
+DEFAULT_SCHOOL_SERVICE = "http://127.0.0.1:8888"
+
+def normalize_url(url):
+    url = (url or "").strip()
+    if not url:
+        return ""
+    if not url.lower().startswith(("http://", "https://")):
+        url = "http://" + url
+    return url.rstrip("/")
+
+def ask(question, default=""):
+    """读一行输入；直接回车则用默认值"""
+    raw = input(question).strip()
+    return raw if raw else default
+
+def ask_yes_no(question, default=False):
+    """Y/n 询问；直接回车取默认值"""
+    hint = "Y/n" if default else "y/N"
+    raw = input(f"{question} ({hint}) ").strip().lower()
+    if not raw:
+        return default
+    return raw in ("y", "yes", "1", "true", "是")
+
+def describe_request_error(e):
+    """requests 的异常原文太长，取一句能看懂的"""
+    text = str(e)
+    if ("Connection refused" in text) or ("WinError 10061" in text) or ("NewConnectionError" in text):
+        return "对方端口没有服务在监听（总服务器没启动？地址写错了？）"
+    if ("timed out" in text) or ("Timeout" in text):
+        return "请求超时（地址能通但没响应，检查端口和防火墙）"
+    if ("Name or service not known" in text) or ("getaddrinfo failed" in text):
+        return "域名 / IP 解析失败"
+    return text[:200]
+
 # 全局读写锁（保护 storage 和 information）
 data_lock = threading.RLock()
 
 storage = None
+
+def register_to_service():
+    """
+    首次初始化时询问是否把本校登记到总服务器，并调用总服务器的 /school/register。
+
+    返回 True  表示总服务器上已认下这个 sid（本次注册成功，或确认之前注册过）；
+    返回 False 表示没登记（跳过 / 用户放弃 / 连不上）。
+    注册成功后把远程密码存进 storage['admin']['password_remote']，
+    不然初始化只走一次，密码丢了就再也补不回来。
+    """
+    try:
+        return _register_flow()
+    except EOFError:
+        # 非交互方式启动（管道 / 关掉 stdin）时不要让程序带着异常退出
+        print("\n[init] 输入被中断，跳过注册")
+        return False
+
+def _register_flow():
+    service = storage.get('service', '')
+    name = storage.get('school_name', '')
+    sid = storage.get('sid', '')
+
+    print()
+    print(f"[init] 本校：{name} (sid: {sid})  总服务器：{service}")
+    if not ask_yes_no("[init] 是否在总服务器中注册？"):
+        print("[init] 已跳过注册：总服务器不认识这个 sid，扫码生成的衣服会返回 sid not found")
+        return False
+
+    while True:
+        password = ask("[init] 远程管理密码（学校在总服务器上的密码）: ")
+        if not password:
+            print("[init] 密码不能为空，请重新输入")
+            continue
+        school_service = normalize_url(
+            ask(f"[init] 本校对外服务地址（默认 {DEFAULT_SCHOOL_SERVICE}）: ", DEFAULT_SCHOOL_SERVICE)
+        )
+        if not school_service:
+            print("[init] 服务地址不能为空，请重新输入")
+            continue
+
+        payload = {
+            "name": name,
+            "sid": sid,
+            "password": password,
+            "school_service": school_service,
+        }
+        try:
+            response = requests.post(service + "/school/register", json=payload, timeout=8)
+        except requests.exceptions.RequestException as e:
+            print(f"[init] 连不上总服务器 {service}：{describe_request_error(e)}")
+            if ask_yes_no("[init] 重新填写并重试？", True):
+                continue
+            print("[init] 已跳过注册，稍后可在总服务器手动补登记（POST /school/register）")
+            return False
+
+        try:
+            body = response.json()
+        except ValueError:
+            body = {"raw": (response.text or "")[:200]}
+        phrase = str(body.get("Phrase", body.get("raw", "")))
+
+        # 注册成功
+        if response.status_code == 200:
+            storage.setdefault('admin', {})['password_remote'] = password
+            print(f"[init] 注册成功：{name} ({sid}) -> {service}")
+            print(f"[init] 总服务器会通过 {school_service} 反向调用本站")
+            if ("127.0.0.1" in school_service) or ("localhost" in school_service):
+                print("[init] 注意：127.0.0.1 只在本机有效。若总服务器不在同一台机器上，请改成局域网 IP 再重新初始化")
+            return True
+
+        # sid / 校名被占用：多半是之前注册过但被重复初始化了
+        if "is exist" in phrase:
+            print(f"[init] 注册失败：{phrase}")
+            print("[init] 说明这个 sid 或校名已被总服务器占用。若本校之前注册过，直接当作已注册即可。")
+            if ask_yes_no("[init] 当作已注册继续？"):
+                storage.setdefault('admin', {})['password_remote'] = password
+                return True
+            print("[init] 已跳过注册。若确定没注册过，请删掉 storage.json 重新初始化，并换个 sid / 校名")
+            return False
+
+        print(f"[init] 注册失败（HTTP {response.status_code}）：{phrase}")
+        if ask_yes_no("[init] 重新填写并重试？", True):
+            continue
+        print("[init] 已跳过注册，稍后可在总服务器手动补登记（POST /school/register）")
+        return False
+
 def start_init_storage():
     """
     {
@@ -33,6 +154,7 @@ def start_init_storage():
         "admin":{
             "username":"admin",
             "password":"123456",
+            "password_remote": None/(学校在总服务器上的密码，初始化注册时写入)
         },
         "uniform":{
             "yid":{
@@ -66,11 +188,14 @@ def start_init_storage():
         else:
             storage['school_name'] = input("[init] Type school name: ")
             storage['sid'] = input("[init] Type sid: ")
-            storage['service'] = input("[init] Type service url: ")
-            # 在远程注册 （代办）
+            storage['service'] = normalize_url(input("[init] Type service url: "))
+            # 在远程注册
+            register_to_service()
     else:
         with open(storage_file, 'r') as f:
             storage = json.load(f)
+        # 老配置里地址可能是手敲的（没写 http://，或结尾带 /），统一整理一遍
+        storage['service'] = normalize_url(storage.get('service', ''))
         # 兼容旧数据：如果 uniform 是列表，转为字典
         if isinstance(storage.get('uniform'), list):
             old_list = storage['uniform']
@@ -453,8 +578,14 @@ def tect_send():
 # is_saved = False
 if __name__ == '__main__':
     start_init_prompt()
+    first_run = not os.path.exists(storage_file)
     start_init_storage()
     start_init_information()
+
+    # 首次初始化（可能刚在总服务器注册过）先把配置落盘，
+    # 否则要等到正常退出才写文件，中途崩溃就白注册了
+    if first_run:
+        end_storage()
 
     # 启动定时清理线程（程序启动时立即清理一次，之后每小时一次）
     start_cleanup_thread()
