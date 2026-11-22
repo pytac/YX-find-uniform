@@ -9,7 +9,7 @@
     "pages/bindstudent/bindstudent"
   ],
   "window": {
-    "navigationBarTitleText": "校服寻找工具",
+    "navigationBarTitleText": "YX-衣寻",
     "navigationBarBackgroundColor": "#4CAF50",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#F5F5F5",

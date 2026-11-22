@@ -1,5 +1,5 @@
 {
-  "description": "校服寻找工具（测试版）",
+  "description": "YX-衣寻 - 找到你的衣服",
   "packOptions": {
     "ignore": [],
     "include": []
@@ -49,7 +49,7 @@
   "compileType": "miniprogram",
   "libVersion": "3.3.4",
   "appid": "wxf1859f4e0a123eec",
-  "projectname": "校服寻找工具",
+  "projectname": "YX-衣寻",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",
