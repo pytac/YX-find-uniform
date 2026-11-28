@@ -202,12 +202,34 @@ Page({
     this.setData({ showModal: false, keyboardUp: false });
   },
 
+  // 关掉确认弹窗、清空上一次的识别结果，回到取景继续扫
+  // 扫错码后不必退出页面重来
+  restartScan() {
+    this._ignoreUntil = Date.now() + 1200;
+    this.setData({
+      showModal: false,
+      scanResult: '',
+      claimMismatch: false,
+      keyboardUp: false,
+      cameraOn: true
+    });
+  },
+
   onConfirm() {
     const { mode, claimTimeId } = this.data;
     const scanResult = (this.data.scanResult || '').trim();
 
     if (!scanResult) {
       wx.showToast({ title: '请输入YID', icon: 'none' });
+      return;
+    }
+
+    // 领取丢失：扫到的 YID 必须和这条丢失记录一致，否则提交必然被学校拒绝。
+    // 界面上「确定」已经置灰禁用，这里再挡一次，防止误触或状态没同步上。
+    const claimYid = (this.data.claimYid || '').trim();
+    if (mode === 'claimLoss' && claimYid && scanResult !== claimYid) {
+      this.syncClaimMismatch();
+      wx.showToast({ title: 'YID 与丢失记录不一致，请重新扫描', icon: 'none' });
       return;
     }
 
@@ -273,8 +295,11 @@ Page({
       this._claimYid = scanResult;
       // 记录这次填的 YID 与丢失记录是否一致，失败时据此给出不同的说明
       this._claimEdited = scanResult !== (this.data.claimYid || '');
+      // 每次重新提交都要清空上一次的痕迹，否则上一轮"连不上"的结论会串到这一轮
       this._claimPhrases = [];
       this._claimTried = 0;
+      this._claimUnreachable = false;
+      this._claimBadResponse = false;
       wx.showLoading({ title: '提交中...' });
       this.postClaim(0, 0);
     } else {
@@ -399,8 +424,14 @@ Page({
       wx.showModal({
         title: '领取失败',
         content: lines.join('\n'),
-        showCancel: false,
-        confirmText: '知道了'
+        confirmText: '重新扫描',
+        cancelText: '手动输入',
+        // 扫错了就该能接着扫：直接回到取景，不必先关弹窗再点取消
+        success: (res) => {
+          if (res.confirm) {
+            this.restartScan();
+          }
+        }
       });
       return;
     }

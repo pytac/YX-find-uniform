@@ -232,20 +232,83 @@ def start_init_information():
     }
     """
     global information
+    information = {}
     if not os.path.exists(information_file):
-        information = {}
+        return
+    try:
+        with open(information_file, 'r', encoding='utf-8') as f:
+            loaded = json.load(f)
+    except (ValueError, OSError) as e:
+        # 文件损坏时不要带着异常启动，也不要静默清空：先备份，再当空数据处理
+        backup = information_file + time_module.strftime(".bad-%Y%m%d%H%M%S")
+        try:
+            os.replace(information_file, backup)
+            print(f"[init] information.json 读取失败（{e}），已备份为 {os.path.basename(backup)}")
+        except OSError:
+            print(f"[init] information.json 读取失败（{e}），且备份失败")
+        return
+    if isinstance(loaded, dict):
+        information = loaded
     else:
-        with open(information_file, 'r') as f:
-            information = json.load(f)
+        print("[init] information.json 结构异常（不是字典），已按空数据处理")
 
 # 结束
-def end_storage():
-    print("saving")
+# ---------- 落盘 ----------
+# 之前只有进程正常退出时才会写文件，而 Ctrl+C / 关窗口 / 任务管理器结束进程都不会走到
+# app.run() 之后，于是这一轮新增的丢失通知全在内存里，下次启动自然是空的。
+# 现在改成：每次改动后立即写 + 后台定时兜底写。
+_last_saved = {"storage": None, "information": None}
+
+def _atomic_write_json(path, data):
+    """先写 .tmp 再 os.replace：进程写到一半被杀也不会留下半截 JSON"""
+    text = json.dumps(data, indent=4)
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, path)
+    return text
+
+def end_storage(quiet=False):
+    """把 storage 与 information 落盘；可重复调用，调用方已持锁也没问题（RLock）"""
     with data_lock:
-        with open(storage_file, 'w') as f:
-            json.dump(storage, f, indent=4)
-        with open(information_file, 'w') as f:
-            json.dump(information, f, indent=4)
+        try:
+            _last_saved["storage"] = _atomic_write_json(storage_file, storage)
+            _last_saved["information"] = _atomic_write_json(information_file, information)
+        except OSError as e:
+            print(f"[save] 写入失败：{e}")
+            return False
+    if not quiet:
+        print("[save] storage.json / information.json 已写入")
+    return True
+
+def save_if_changed():
+    """内容有变化才写，避免定时任务把磁盘刷爆"""
+    with data_lock:
+        try:
+            s_text = json.dumps(storage, indent=4)
+            i_text = json.dumps(information, indent=4)
+        except (TypeError, ValueError) as e:
+            print(f"[save] 序列化失败：{e}")
+            return False
+        if s_text == _last_saved["storage"] and i_text == _last_saved["information"]:
+            return False
+    return end_storage(quiet=True)
+
+def autosave_scheduler(interval=5):
+    """后台兜底保存：即使某个改动点忘了立即写，最多 5 秒也会落盘"""
+    while True:
+        time_module.sleep(interval)
+        try:
+            if save_if_changed():
+                print("[save] 自动保存完成")
+        except Exception as e:
+            print(f"[save] 自动保存异常：{e}")
+
+def start_autosave_thread():
+    thread = threading.Thread(target=autosave_scheduler, daemon=True)
+    thread.start()
 
 # 函数
 def make_response(phrase, status, detail=None):
@@ -282,6 +345,9 @@ def send_information(uid, type, time_val, auto_delete=True, detail={}):
             "auto_delete": auto_delete,
             "detail": detail
         }
+
+    # 消息一产生就落盘，不等进程退出
+    end_storage(quiet=True)
 
 # ------------------ 定时清理 information ------------------
 def cleanup_information():
@@ -331,6 +397,7 @@ def cleanup_information():
 
     if deleted_count > 0 or empty_users:
         print(f"[Cleanup] Removed {deleted_count} expired messages, removed {len(empty_users)} empty user entries.")
+        end_storage(quiet=True)
 
 def cleanup_scheduler():
     """后台清理循环：启动时执行一次，之后每小时执行一次"""
@@ -433,6 +500,7 @@ def del_msg():
             return make_response("loss information cannot be deleted",False,{}), 423
         
         del information[uid][key]
+        end_storage(quiet=True)
         return make_response("delete msg success", True, {"key": key}), 200
 
 @app.route('/service/loss', methods=['POST'])
@@ -578,21 +646,27 @@ def tect_send():
 # is_saved = False
 if __name__ == '__main__':
     start_init_prompt()
-    first_run = not os.path.exists(storage_file)
     start_init_storage()
     start_init_information()
 
-    # 首次初始化（可能刚在总服务器注册过）先把配置落盘，
-    # 否则要等到正常退出才写文件，中途崩溃就白注册了
-    if first_run:
-        end_storage()
+    # 启动时先写一次：
+    # 1) 首次初始化（可能刚在总服务器注册过）先落盘，别等退出；
+    # 2) 顺便把 _last_saved 基线记下来，自动保存才知道"变没变"。
+    end_storage()
 
     # 启动定时清理线程（程序启动时立即清理一次，之后每小时一次）
     start_cleanup_thread()
 
-    app.run(debug=False, host='0.0.0.0', port=8888)
-    # app.run(debug=False, host='192.168.101.7', port=8888)
-    # app.run(debug=False, host='127.0.0.1', port=8888)
-    
-    end_storage()
+    # 后台兜底保存（改动点漏了立即写也最多丢 5 秒）
+    start_autosave_thread()
+
+    try:
+        app.run(debug=False, host='0.0.0.0', port=8888)
+        # app.run(debug=False, host='192.168.101.7', port=8888)
+        # app.run(debug=False, host='127.0.0.1', port=8888)
+    except KeyboardInterrupt:
+        print("\n[exit] 收到 Ctrl+C")
+    finally:
+        # Ctrl+C / 异常退出也要把内存里的消息写回去
+        end_storage()
     sys.exit(0)

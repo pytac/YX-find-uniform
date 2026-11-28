@@ -67,11 +67,13 @@
         <view class="modal-hint">识别有误可直接修改，确定后使用修改后的值</view>
         <view class="modal-warn" wx:if="{{claimMismatch}}">
           <text>与这条丢失记录的 YID 不一致（记录：{{claimYid}}）</text>
+          <text class="modal-warn-sub">请重新扫描，或把 YID 改成与记录一致后才能继续</text>
         </view>
       </view>
       <view class="modal-footer">
         <button class="modal-btn cancel-btn" bindtap="onCancel">取消</button>
-        <button class="modal-btn confirm-btn" bindtap="onConfirm">确定</button>
+        <button class="modal-btn confirm-btn {{claimMismatch ? 'is-disabled' : ''}}"
+                disabled="{{claimMismatch}}" bindtap="onConfirm">确定</button>
       </view>
     </view>
   </view>

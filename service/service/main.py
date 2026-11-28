@@ -6,6 +6,7 @@ import uuid
 import sys                 # 获取命令行参数
 import requests            # 发送请求
 import threading           # 添加全局锁
+import time as time_module # 后台自动保存用
 
 # 初始化 --------------------------------
 
@@ -57,17 +58,77 @@ def start_init_storage():
             json.dump(storage, f, indent=4)
             # json.dump(storage, f)
     else:
-        with open(storage_file, 'r') as f:
-            storage = json.load(f)
+        try:
+            with open(storage_file, 'r', encoding='utf-8') as f:
+                storage = json.load(f)
+        except (ValueError, OSError) as e:
+            # 文件坏了先备份再从空库启动，别让程序直接崩在启动阶段
+            backup = storage_file + time_module.strftime(".bad-%Y%m%d%H%M%S")
+            try:
+                os.replace(storage_file, backup)
+                print(f"[init] storage.json 读取失败（{e}），已备份为 {os.path.basename(backup)}")
+            except OSError:
+                print(f"[init] storage.json 读取失败（{e}），且备份失败")
+            storage = {
+                "exist_school_name": [],
+                "school_register_search": {},
+                "uniform_search": {},
+            }
 
 
 # 结束 --------------------------------
-def end_storage():
-    print("saving!")
+# 之前只在进程正常退出时写文件，Ctrl+C / 关窗口 / 强杀都不会执行到 app.run() 之后，
+# 于是这一轮注册的校服、上报记录全在内存里，重启就没了。
+# 现在：每个改动接口立即写 + 后台 5 秒兜底写。
+_last_saved = None
+
+def _atomic_write_storage(data):
+    """先写 .tmp 再 os.replace，避免写到一半被杀留下半截 JSON"""
+    text = json.dumps(data, indent=4)
+    tmp_path = storage_file + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, storage_file)
+    return text
+
+def end_storage(quiet=False):
+    global _last_saved
     with storage_lock:  # 保存时加锁
-        with open(storage_file, 'w') as f:
-            f.write(json.dumps(storage, indent=4))
-            # json.dump(storage, f)
+        try:
+            _last_saved = _atomic_write_storage(storage)
+        except OSError as e:
+            print(f"[save] 写入失败：{e}")
+            return False
+    if not quiet:
+        print("saving!")
+    return True
+
+def save_if_changed():
+    """内容变了才写，别让定时任务把磁盘刷爆"""
+    with storage_lock:
+        try:
+            text = json.dumps(storage, indent=4)
+        except (TypeError, ValueError) as e:
+            print(f"[save] 序列化失败：{e}")
+            return False
+        if text == _last_saved:
+            return False
+    return end_storage(quiet=True)
+
+def autosave_scheduler(interval=5):
+    while True:
+        time_module.sleep(interval)
+        try:
+            if save_if_changed():
+                print("[save] 自动保存完成")
+        except Exception as e:
+            print(f"[save] 自动保存异常：{e}")
+
+def start_autosave_thread():
+    thread = threading.Thread(target=autosave_scheduler, daemon=True)
+    thread.start()
 
 # 必要函数 --------------------------------
 
@@ -157,6 +218,9 @@ def make_uniform():
             "detail": None
         }
 
+    # 生成的 YID 要马上落盘：万一进程被杀，印出去的二维码就对不上了
+    end_storage(quiet=True)
+
     # 返回结果
     return _make_response("Make uniform success", True, result), 200
 
@@ -225,6 +289,7 @@ def school_resgister():
         if (not payload_data["name"] in storage["exist_school_name"]):
             return _make_response("exist_school_name in error (register failed)", False, {}), 500
 
+    end_storage(quiet=True)
     return _make_response("register successfully", True, {}), 200
 
 @app.route("/user/enable", methods=['POST'])
@@ -290,7 +355,9 @@ def enable_uniform():
         # if (payload_data["uid"] not in storage["user_uniform"]):
         #     storage["user_uniform"][payload_data["uid"]] = []
         # storage["user_uniform"][payload_data["uid"]].append(payload_data["yid"])
-    
+
+    end_storage(quiet=True)
+
     # 返回结果，附带 school_service 信息
     return _make_response("enable successfully", True, {"school_service": storage["school_register_search"][sid]["school_service"],"name": storage["school_register_search"][sid]["name"]}), 200
 
@@ -370,7 +437,7 @@ def loss():
         error_detail = _safe_json(response)
         return _make_response("school loss failed", False, error_detail), response.status_code
 
-    # 记录这一次上报，便于在总服务器端核对（退出时随 storage 一起落盘）
+    # 记录这一次上报，便于在总服务器端核对（连同 storage 一起立即落盘）
     with storage_lock:
         records = storage.setdefault("loss_records", {})
         record_id = str(int(time() * 1000))
@@ -382,6 +449,7 @@ def loss():
         }
         total = len(records)
     print(f"[loss] recorded yid={payload_data['yid']} sid={sid} total={total}")
+    end_storage(quiet=True)
 
     return _make_response("lossing report successfully", True, {"sid": sid}), 200
 
@@ -415,7 +483,9 @@ def delete_uniform():
         return _make_response("yid is not active", False, {}), 423
     
     # 删除服装
-    del storage["uniform_search"][yid]
+    with storage_lock:
+        del storage["uniform_search"][yid]
+    end_storage(quiet=True)
     return _make_response("delete successfully", True, {}), 200
 
 # 测试用
@@ -433,9 +503,19 @@ if __name__ == '__main__':
     start_init_prompt()
     start_init_storage()
 
-    app.run(debug=False, host="0.0.0.0", port=5000)
-    # app.run(debug=False, host="192.168.101.7", port=5000)
-    # app.run(debug=False, host="127.0.0.1", port=5000)
+    # 启动先写一次：既保证初始化数据落盘，也让自动保存拿到比对基线
+    end_storage(quiet=True)
 
-    end_storage()
+    # 后台兜底保存（漏了立即写的改动最多留 5 秒）
+    start_autosave_thread()
+
+    try:
+        app.run(debug=False, host="0.0.0.0", port=5000)
+        # app.run(debug=False, host="192.168.101.7", port=5000)
+        # app.run(debug=False, host="127.0.0.1", port=5000)
+    except KeyboardInterrupt:
+        print("\n[exit] 收到 Ctrl+C")
+    finally:
+        # Ctrl+C / 异常退出也要把内存里的数据写回去
+        end_storage()
     sys.exit(0)

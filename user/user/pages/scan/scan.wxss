@@ -320,6 +320,13 @@
   word-break: break-all;
 }
 
+.modal-warn-sub {
+  display: block;
+  margin-top: 6rpx;
+  color: #B0700A;
+  font-size: 21rpx;
+}
+
 .modal-footer {
   margin-top: 30rpx;
   display: flex;
@@ -344,6 +351,14 @@
   background: #4CAF50;
   color: #fff;
   box-shadow: 0 4rpx 16rpx rgba(76,175,80,0.3);
+}
+
+/* 扫到的 YID 与丢失记录对不上：确定按钮置灰禁用，避免提交一次必然失败的领取 */
+.confirm-btn.is-disabled,
+.confirm-btn[disabled] {
+  background: #d8d8d8;
+  color: #ffffff;
+  box-shadow: none;
 }
 
 .cancel-btn {
